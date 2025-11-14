@@ -1,65 +1,141 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
 
 export default function Home() {
+  const [image, setImage] = useState<string | null>(null);
+  const [text, setText] = useState('');
+  const postcardRef = useRef<HTMLDivElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!postcardRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(postcardRef.current, {
+        scale: 2,
+        backgroundColor: '#f5f0e8',
+        logging: false,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `postcard-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error('Failed to generate postcard:', error);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        <header className="text-center mb-12">
+          <h1 className="text-5xl font-serif font-light text-stone-800 mb-3 tracking-wide">
+            Film Postcard
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <p className="text-stone-600 text-lg font-light">Create your vintage memory</p>
+        </header>
+
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Control Panel */}
+          <div className="space-y-6">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-stone-200">
+              <h2 className="text-2xl font-serif text-stone-800 mb-6">Upload & Create</h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-3">
+                    Choose Your Photo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="block w-full text-sm text-stone-600 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-stone-800 file:text-white hover:file:bg-stone-700 file:cursor-pointer cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-3">
+                    Write Your Message
+                  </label>
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融"
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none text-stone-700 placeholder:text-stone-400 bg-white/80"
+                  />
+                </div>
+
+                <button
+                  onClick={handleDownload}
+                  disabled={!image}
+                  className="w-full bg-stone-800 text-white py-4 px-6 rounded-full font-medium hover:bg-stone-700 transition-all disabled:bg-stone-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  Download Postcard
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Postcard Preview */}
+          <div className="flex justify-center items-center">
+            <div className="relative">
+              <div 
+                ref={postcardRef}
+                className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl"
+                style={{ width: '480px' }}
+              >
+                <div className="bg-white p-6 rounded-2xl shadow-inner">
+                  {image ? (
+                    <div className="aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
+                      <img 
+                        src={image} 
+                        alt="Uploaded" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-xl flex items-center justify-center mb-6">
+                      <div className="text-center text-stone-400">
+                        <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm font-light">Upload your photo</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="text-center space-y-2">
+                    {text ? (
+                      <p className="text-stone-700 text-base leading-relaxed whitespace-pre-line font-serif">
+                        {text}
+                      </p>
+                    ) : (
+                      <p className="text-stone-400 text-sm font-light italic">
+                        Your message will appear here
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
