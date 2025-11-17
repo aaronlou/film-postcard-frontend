@@ -7,4 +7,6 @@ export const API_ENDPOINTS = {
   uploadImage: `${API_BASE_URL}/api/upload`,
   submitOrder: `${API_BASE_URL}/api/orders`,
   recordDownload: `${API_BASE_URL}/api/downloads`,
+  getUserDesigns: (username: string) => `${API_BASE_URL}/api/users/${username}/designs`,
+  getUserProfile: (username: string) => `${API_BASE_URL}/api/users/${username}`,
 } as const;

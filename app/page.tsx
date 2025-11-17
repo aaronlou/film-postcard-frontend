@@ -86,12 +86,37 @@ export default function Home() {
     if (!templateRef.current) return;
 
     try {
-      const canvas = await html2canvas(templateRef.current, {
+      const element = templateRef.current;
+      
+      // Temporarily store original styles
+      const originalStyles = new Map<Element, string>();
+      
+      // Find all elements and replace unsupported color formats
+      const allElements = element.querySelectorAll('*');
+      allElements.forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        const computedStyle = window.getComputedStyle(htmlEl);
+        
+        // Check and fix background colors
+        if (computedStyle.backgroundColor && /(?:lab|lch|oklab|oklch)\(/.test(computedStyle.backgroundColor)) {
+          originalStyles.set(el, htmlEl.style.backgroundColor);
+          htmlEl.style.backgroundColor = 'transparent';
+        }
+      });
+      
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' :
           currentTemplate === 'bookmark' ? '#fef3e2' :
             currentTemplate === 'polaroid' ? '#ffffff' : '#faf8f5',
         logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+      
+      // Restore original styles
+      originalStyles.forEach((value, el) => {
+        (el as HTMLElement).style.backgroundColor = value;
       });
 
       const link = document.createElement('a');
@@ -259,13 +284,16 @@ export default function Home() {
 
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-3">
-                    二维码链接（如果没有个人网站，也可联系站长为您创建个人作品空间）
+                    二维码链接
                   </label>
+                  <p className="text-xs text-stone-500 mb-2">
+                    还没有个人作品空间？<a href="#" className="text-amber-600 hover:text-amber-700 underline">点击创建</a>你的专属页面（如：film.isnap.world/u/yourname）
+                  </p>
                   <input
                     type="url"
                     value={qrUrl}
                     onChange={(e) => setQrUrl(e.target.value)}
-                    placeholder="https://example.com"
+                    placeholder="https://film.isnap.world/u/yourname"
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent text-stone-700 placeholder:text-stone-400 bg-white/80"
                   />
                 </div>
