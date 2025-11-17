@@ -8,6 +8,7 @@ import BookmarkTemplate from './components/templates/BookmarkTemplate';
 import PolaroidTemplate from './components/templates/PolaroidTemplate';
 import GreetingTemplate from './components/templates/GreetingTemplate';
 import { QRCodeSVG } from 'qrcode.react';
+import { API_ENDPOINTS } from './config/api';
 
 export default function Home() {
   const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('postcard');
@@ -91,7 +92,7 @@ export default function Home() {
 
     setIsPolishing(true);
     try {
-      const response = await fetch('/api/polish-text', {
+      const response = await fetch(API_ENDPOINTS.polishText, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

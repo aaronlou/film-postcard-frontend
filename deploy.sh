@@ -2,15 +2,15 @@
 
 echo "🚀 Starting deployment..."
 
-# Pull latest code
-echo "📥 Pulling latest code from git..."
-git pull
-
-# Check if pull was successful
-if [ $? -ne 0 ]; then
-  echo "❌ Git pull failed. Aborting deployment."
-  exit 1
-fi
+## Pull latest code
+#echo "📥 Pulling latest code from git..."
+#git pull
+#
+## Check if pull was successful
+#if [ $? -ne 0 ]; then
+#  echo "❌ Git pull failed. Aborting deployment."
+#  exit 1
+#fi
 
 # Install dependencies
 echo "📦 Installing dependencies..."
