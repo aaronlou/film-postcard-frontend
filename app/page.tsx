@@ -13,6 +13,8 @@ import { API_ENDPOINTS } from './config/api';
 export default function Home() {
   const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('postcard');
   const [image, setImage] = useState<string | null>(null);
+  const [uploadedImageId, setUploadedImageId] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [text, setText] = useState('');
   const [qrUrl, setQrUrl] = useState('https://example.com');
   const [isPolishing, setIsPolishing] = useState(false);
@@ -28,40 +30,97 @@ export default function Home() {
   const polaroidRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<HTMLDivElement>(null);
 
-  const templateRef = currentTemplate === 'postcard' ? postcardRef : 
-                      currentTemplate === 'bookmark' ? bookmarkRef :
-                      currentTemplate === 'polaroid' ? polaroidRef : greetingRef;
+  const templateRef = currentTemplate === 'postcard' ? postcardRef :
+    currentTemplate === 'bookmark' ? bookmarkRef :
+      currentTemplate === 'polaroid' ? polaroidRef : greetingRef;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate file size - 30MB limit
+    const MAX_SIZE = 30 * 1024 * 1024; // 30MB
+    if (file.size > MAX_SIZE) {
+      alert('图片大小不能超过30MB');
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to backend
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(API_ENDPOINTS.uploadImage, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Image upload failed');
+      }
+
+      const data = await response.json();
+      setUploadedImageId(data.imageId || data.id || data.url);
+      
+      // Update image with backend URL if provided
+      if (data.url) {
+        setImage(data.url);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('图片上传失败，请稍后再试');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
   const handleDownload = async () => {
     if (!templateRef.current) return;
-    
+
     try {
       const canvas = await html2canvas(templateRef.current, {
         scale: 2,
-        backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' : 
-                         currentTemplate === 'bookmark' ? '#fef3e2' :
-                         currentTemplate === 'polaroid' ? '#ffffff' : '#faf8f5',
+        backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' :
+          currentTemplate === 'bookmark' ? '#fef3e2' :
+            currentTemplate === 'polaroid' ? '#ffffff' : '#faf8f5',
         logging: false,
       });
-      
+
       const link = document.createElement('a');
-      const templateName = currentTemplate === 'postcard' ? 'postcard' : 
-                          currentTemplate === 'bookmark' ? 'bookmark' :
-                          currentTemplate === 'polaroid' ? 'polaroid' : 'greeting';
+      const templateName = currentTemplate === 'postcard' ? 'postcard' :
+        currentTemplate === 'bookmark' ? 'bookmark' :
+          currentTemplate === 'polaroid' ? 'polaroid' : 'greeting';
       link.download = `${templateName}-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
+
+      // Record download to backend for analytics (non-blocking)
+      try {
+        await fetch(API_ENDPOINTS.recordDownload, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageId: uploadedImageId,
+            templateType: currentTemplate,
+            text,
+            qrUrl,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch (error) {
+        // Silent fail - don't interrupt user download experience
+        console.error('Failed to record download:', error);
+      }
     } catch (error) {
       console.error('Failed to generate image:', error);
     }
@@ -69,19 +128,40 @@ export default function Home() {
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: Implement order submission to backend
-    console.log('Order submitted:', orderData);
-    alert('订单提交成功！我们会尽快联系您。');
-    setShowOrderModal(false);
-    
-    // Reset order form
-    setOrderData({
-      name: '',
-      phone: '',
-      address: '',
-      quantity: 1,
-    });
+      
+    try {
+      const response = await fetch(API_ENDPOINTS.submitOrder, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...orderData,
+          imageId: uploadedImageId,
+          templateType: currentTemplate,
+          text,
+          qrUrl,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Order submission failed');
+      }
+  
+      alert('订单提交成功！我们会尽快联系您。');
+      setShowOrderModal(false);
+        
+      // Reset order form
+      setOrderData({
+        name: '',
+        phone: '',
+        address: '',
+        quantity: 1,
+      });
+    } catch (error) {
+      console.error('Order submission error:', error);
+      alert('订单提交失败，请稍后再试');
+    }
   };
 
   const handlePolishText = async () => {
@@ -127,8 +207,8 @@ export default function Home() {
           <p className="text-stone-600 text-lg font-light">创作你的复古回忆</p>
         </header>
 
-        <TemplateSwitcher 
-          currentTemplate={currentTemplate} 
+        <TemplateSwitcher
+          currentTemplate={currentTemplate}
           onTemplateChange={setCurrentTemplate}
         />
 
@@ -137,17 +217,21 @@ export default function Home() {
           <div className="space-y-6">
             <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-stone-200">
               <h2 className="text-2xl font-serif text-stone-800 mb-6">上传与创作</h2>
-              
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-3">
                     选择照片
+                    {isUploadingImage && (
+                      <span className="ml-2 text-xs text-stone-500 italic">上传中...</span>
+                    )}
                   </label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
-                    className="block w-full text-sm text-stone-600 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-stone-800 file:text-white hover:file:bg-stone-700 file:cursor-pointer cursor-pointer"
+                    disabled={isUploadingImage}
+                    className="block w-full text-sm text-stone-600 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-stone-800 file:text-white hover:file:bg-stone-700 file:cursor-pointer cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -191,9 +275,9 @@ export default function Home() {
                   disabled={!image}
                   className="w-full bg-stone-800 text-white py-4 px-6 rounded-full font-medium hover:bg-stone-700 transition-all disabled:bg-stone-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                 >
-                  {currentTemplate === 'postcard' ? '下载明信片' : 
-                   currentTemplate === 'bookmark' ? '下载书签' :
-                   currentTemplate === 'polaroid' ? '下载拍立得' : '下载贺卡'}
+                  {currentTemplate === 'postcard' ? '下载明信片' :
+                    currentTemplate === 'bookmark' ? '下载书签' :
+                      currentTemplate === 'polaroid' ? '下载拍立得' : '下载贺卡'}
                 </button>
 
                 <button
@@ -211,7 +295,7 @@ export default function Home() {
           <div className="flex justify-center items-center">
             {currentTemplate === 'postcard' ? (
               <div className="relative">
-                <div 
+                <div
                   ref={postcardRef}
                   className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl relative"
                   style={{ width: '480px' }}
@@ -231,9 +315,9 @@ export default function Home() {
                             <div key={`r-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
                           ))}
                         </div>
-                        <img 
-                          src={image} 
-                          alt="Uploaded" 
+                        <img
+                          src={image}
+                          alt="Uploaded"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -247,7 +331,7 @@ export default function Home() {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Bottom section with text and QR code side by side */}
                     <div className="flex items-start gap-4">
                       {/* Text area - left side */}
@@ -262,19 +346,19 @@ export default function Home() {
                           </p>
                         )}
                       </div>
-                      
+
                       {/* QR code section - clean and simple */}
                       <div className="flex-shrink-0 text-center">
                         <div className="bg-white p-1.5 rounded shadow-sm border border-stone-200/50">
-                          <QRCodeSVG 
-                            value={qrUrl} 
+                          <QRCodeSVG
+                            value={qrUrl}
                             size={44}
                             level="H"
                             includeMargin={false}
                           />
                         </div>
                         <p className="text-[8px] text-stone-400 mt-1.5 leading-tight">
-                          扫码查看<br/>摄影作品集
+                          扫码查看<br />摄影作品集
                         </p>
                       </div>
                     </div>
@@ -282,17 +366,17 @@ export default function Home() {
                 </div>
               </div>
             ) : currentTemplate === 'bookmark' ? (
-              <BookmarkTemplate 
+              <BookmarkTemplate
                 ref={bookmarkRef}
                 data={{ image, text, qrUrl }}
               />
             ) : currentTemplate === 'polaroid' ? (
-              <PolaroidTemplate 
+              <PolaroidTemplate
                 ref={polaroidRef}
                 data={{ image, text, qrUrl }}
               />
             ) : (
-              <GreetingTemplate 
+              <GreetingTemplate
                 ref={greetingRef}
                 data={{ image, text, qrUrl }}
               />

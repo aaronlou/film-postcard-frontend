@@ -4,7 +4,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://fil
 // API Endpoints
 export const API_ENDPOINTS = {
   polishText: `${API_BASE_URL}/api/polish-text`,
-  // Add more endpoints here as needed
-  // submitOrder: `${API_BASE_URL}/api/orders`,
-  // uploadImage: `${API_BASE_URL}/api/upload`,
+  uploadImage: `${API_BASE_URL}/api/upload`,
+  submitOrder: `${API_BASE_URL}/api/orders`,
+  recordDownload: `${API_BASE_URL}/api/downloads`,
 } as const;
