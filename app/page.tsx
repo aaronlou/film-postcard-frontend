@@ -14,6 +14,7 @@ export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [qrUrl, setQrUrl] = useState('https://example.com');
+  const [isPolishing, setIsPolishing] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderData, setOrderData] = useState({
     name: '',
@@ -82,6 +83,39 @@ export default function Home() {
     });
   };
 
+  const handlePolishText = async () => {
+    if (!text.trim()) {
+      alert('请先输入一些文字');
+      return;
+    }
+
+    setIsPolishing(true);
+    try {
+      const response = await fetch('/api/polish-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          templateType: currentTemplate,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI优化失败');
+      }
+
+      const data = await response.json();
+      setText(data.polishedText);
+    } catch (error) {
+      console.error('Polish error:', error);
+      alert('AI优化服务暂时不可用，请稍后再试');
+    } finally {
+      setIsPolishing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 py-12 px-4">
       <div className="max-w-6xl mx-auto">
@@ -117,9 +151,18 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-3">
-                    写下你的文字
-                  </label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-stone-700">
+                      写下你的文字
+                    </label>
+                    <button
+                      onClick={handlePolishText}
+                      disabled={!text.trim() || isPolishing}
+                      className="text-xs text-stone-400 hover:text-stone-600 transition-colors disabled:text-stone-300 disabled:cursor-not-allowed italic"
+                    >
+                      {isPolishing ? '优化中...' : '✨ 让AI润色'}
+                    </button>
+                  </div>
                   <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
