@@ -2,9 +2,15 @@
 
 import { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
+import { TemplateType } from './types/template';
+import TemplateSwitcher from './components/TemplateSwitcher';
+import BookmarkTemplate from './components/templates/BookmarkTemplate';
+import PolaroidTemplate from './components/templates/PolaroidTemplate';
+import GreetingTemplate from './components/templates/GreetingTemplate';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function Home() {
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('postcard');
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [qrUrl, setQrUrl] = useState('https://example.com');
@@ -16,6 +22,13 @@ export default function Home() {
     quantity: 1,
   });
   const postcardRef = useRef<HTMLDivElement>(null);
+  const bookmarkRef = useRef<HTMLDivElement>(null);
+  const polaroidRef = useRef<HTMLDivElement>(null);
+  const greetingRef = useRef<HTMLDivElement>(null);
+
+  const templateRef = currentTemplate === 'postcard' ? postcardRef : 
+                      currentTemplate === 'bookmark' ? bookmarkRef :
+                      currentTemplate === 'polaroid' ? polaroidRef : greetingRef;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -29,21 +42,26 @@ export default function Home() {
   };
 
   const handleDownload = async () => {
-    if (!postcardRef.current) return;
+    if (!templateRef.current) return;
     
     try {
-      const canvas = await html2canvas(postcardRef.current, {
+      const canvas = await html2canvas(templateRef.current, {
         scale: 2,
-        backgroundColor: '#f5f0e8',
+        backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' : 
+                         currentTemplate === 'bookmark' ? '#fef3e2' :
+                         currentTemplate === 'polaroid' ? '#ffffff' : '#faf8f5',
         logging: false,
       });
       
       const link = document.createElement('a');
-      link.download = `postcard-${Date.now()}.png`;
+      const templateName = currentTemplate === 'postcard' ? 'postcard' : 
+                          currentTemplate === 'bookmark' ? 'bookmark' :
+                          currentTemplate === 'polaroid' ? 'polaroid' : 'greeting';
+      link.download = `${templateName}-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
-      console.error('Failed to generate postcard:', error);
+      console.error('Failed to generate image:', error);
     }
   };
 
@@ -67,12 +85,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <header className="text-center mb-12">
+        <header className="text-center mb-8">
           <h1 className="text-5xl font-serif font-light text-stone-800 mb-3 tracking-wide">
-            胶片明信片
+            胶片创作工坊
           </h1>
           <p className="text-stone-600 text-lg font-light">创作你的复古回忆</p>
         </header>
+
+        <TemplateSwitcher 
+          currentTemplate={currentTemplate} 
+          onTemplateChange={setCurrentTemplate}
+        />
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Control Panel */}
@@ -124,7 +147,9 @@ export default function Home() {
                   disabled={!image}
                   className="w-full bg-stone-800 text-white py-4 px-6 rounded-full font-medium hover:bg-stone-700 transition-all disabled:bg-stone-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                 >
-                  下载明信片
+                  {currentTemplate === 'postcard' ? '下载明信片' : 
+                   currentTemplate === 'bookmark' ? '下载书签' :
+                   currentTemplate === 'polaroid' ? '下载拍立得' : '下载贺卡'}
                 </button>
 
                 <button
@@ -138,67 +163,96 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Postcard Preview */}
+          {/* Template Preview */}
           <div className="flex justify-center items-center">
-            <div className="relative">
-              <div 
-                ref={postcardRef}
-                className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl relative"
-                style={{ width: '480px' }}
-              >
-                <div className="bg-white p-6 rounded-2xl shadow-inner relative">
-                  {image ? (
-                    <div className="aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
-                      <img 
-                        src={image} 
-                        alt="Uploaded" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-xl flex items-center justify-center mb-6">
-                      <div className="text-center text-stone-400">
-                        <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-sm font-light">上传你的照片</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Bottom section with text and QR code side by side */}
-                  <div className="flex items-start gap-4">
-                    {/* Text area - left side */}
-                    <div className="flex-1 text-left">
-                      {text ? (
-                        <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line font-serif">
-                          {text}
-                        </p>
-                      ) : (
-                        <p className="text-stone-400 text-xs font-light italic">
-                          你的文字将显示在这里
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* QR code section - clean and simple */}
-                    <div className="flex-shrink-0 text-center">
-                      <div className="bg-white p-1.5 rounded shadow-sm border border-stone-200/50">
-                        <QRCodeSVG 
-                          value={qrUrl} 
-                          size={44}
-                          level="H"
-                          includeMargin={false}
+            {currentTemplate === 'postcard' ? (
+              <div className="relative">
+                <div 
+                  ref={postcardRef}
+                  className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl relative"
+                  style={{ width: '480px' }}
+                >
+                  <div className="bg-white p-6 rounded-2xl shadow-inner relative">
+                    {image ? (
+                      <div className="relative aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
+                        {/* Subtle film perforations on left */}
+                        <div className="absolute left-1 top-0 bottom-0 w-1 flex flex-col justify-around py-4">
+                          {[...Array(8)].map((_, i) => (
+                            <div key={`l-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
+                          ))}
+                        </div>
+                        {/* Subtle film perforations on right */}
+                        <div className="absolute right-1 top-0 bottom-0 w-1 flex flex-col justify-around py-4">
+                          {[...Array(8)].map((_, i) => (
+                            <div key={`r-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
+                          ))}
+                        </div>
+                        <img 
+                          src={image} 
+                          alt="Uploaded" 
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                      <p className="text-[8px] text-stone-400 mt-1.5 leading-tight">
-                        扫码查看<br/>摄影作品集
-                      </p>
+                    ) : (
+                      <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-xl flex items-center justify-center mb-6">
+                        <div className="text-center text-stone-400">
+                          <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-sm font-light">上传你的照片</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Bottom section with text and QR code side by side */}
+                    <div className="flex items-start gap-4">
+                      {/* Text area - left side */}
+                      <div className="flex-1 text-left">
+                        {text ? (
+                          <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line font-serif">
+                            {text}
+                          </p>
+                        ) : (
+                          <p className="text-stone-400 text-xs font-light italic">
+                            你的文字将显示在这里
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* QR code section - clean and simple */}
+                      <div className="flex-shrink-0 text-center">
+                        <div className="bg-white p-1.5 rounded shadow-sm border border-stone-200/50">
+                          <QRCodeSVG 
+                            value={qrUrl} 
+                            size={44}
+                            level="H"
+                            includeMargin={false}
+                          />
+                        </div>
+                        <p className="text-[8px] text-stone-400 mt-1.5 leading-tight">
+                          扫码查看<br/>摄影作品集
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : currentTemplate === 'bookmark' ? (
+              <BookmarkTemplate 
+                ref={bookmarkRef}
+                data={{ image, text, qrUrl }}
+              />
+            ) : currentTemplate === 'polaroid' ? (
+              <PolaroidTemplate 
+                ref={polaroidRef}
+                data={{ image, text, qrUrl }}
+              />
+            ) : (
+              <GreetingTemplate 
+                ref={greetingRef}
+                data={{ image, text, qrUrl }}
+              />
+            )}
           </div>
         </div>
       </div>

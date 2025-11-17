@@ -1,0 +1,34 @@
+export const TEMPLATE_CONFIGS = [
+  {
+    id: 'postcard' as const,
+    name: 'Film Postcard',
+    nameCN: '胶片明信片',
+    icon: '📮',
+    description: 'Create vintage film-style postcards',
+    descriptionCN: '创作复古胶片风格明信片',
+  },
+  {
+    id: 'bookmark' as const,
+    name: 'Artistic Bookmark',
+    nameCN: '艺术书签',
+    icon: '🔖',
+    description: 'Design elegant bookmarks',
+    descriptionCN: '设计优雅的艺术书签',
+  },
+  {
+    id: 'polaroid' as const,
+    name: 'Polaroid Frame',
+    nameCN: '拍立得相框',
+    icon: '📸',
+    description: 'Classic instant photo style',
+    descriptionCN: '经典即时成像风格',
+  },
+  {
+    id: 'greeting' as const,
+    name: 'Greeting Card',
+    nameCN: '祝福贺卡',
+    icon: '💌',
+    description: 'Elegant greeting card for special occasions',
+    descriptionCN: '精致祝福贺卡，适合各种场合',
+  },
+];
