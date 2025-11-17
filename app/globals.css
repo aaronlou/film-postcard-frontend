@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  /* Disable modern color spaces to fix html2canvas compatibility */
+  --color-oklch: initial;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

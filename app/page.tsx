@@ -86,51 +86,7 @@ export default function Home() {
     if (!templateRef.current) return;
 
     try {
-      const element = templateRef.current;
-      
-      // Store original styles for all elements
-      const styleBackup = new Map<HTMLElement, { bg: string, color: string, border: string }>();
-      
-      // Recursively fix all elements including the root and all descendants
-      const fixColors = (el: Element) => {
-        const htmlEl = el as HTMLElement;
-        const computed = window.getComputedStyle(htmlEl);
-        
-        const needsFix = 
-          (computed.backgroundColor && /(?:lab|lch|oklab|oklch)\(/.test(computed.backgroundColor)) ||
-          (computed.color && /(?:lab|lch|oklab|oklch)\(/.test(computed.color)) ||
-          (computed.borderColor && /(?:lab|lch|oklab|oklch)\(/.test(computed.borderColor));
-        
-        if (needsFix) {
-          styleBackup.set(htmlEl, {
-            bg: htmlEl.style.backgroundColor,
-            color: htmlEl.style.color,
-            border: htmlEl.style.borderColor,
-          });
-          
-          // Replace with safe fallbacks
-          if (computed.backgroundColor && /(?:lab|lch|oklab|oklch)\(/.test(computed.backgroundColor)) {
-            htmlEl.style.backgroundColor = 'rgb(255, 255, 255)';
-          }
-          if (computed.color && /(?:lab|lch|oklab|oklch)\(/.test(computed.color)) {
-            htmlEl.style.color = 'rgb(0, 0, 0)';
-          }
-          if (computed.borderColor && /(?:lab|lch|oklab|oklch)\(/.test(computed.borderColor)) {
-            htmlEl.style.borderColor = 'rgb(0, 0, 0)';
-          }
-        }
-        
-        // Process all children
-        Array.from(el.children).forEach(fixColors);
-      };
-      
-      // Fix the entire tree
-      fixColors(element);
-      
-      // Small delay to ensure styles are applied
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const canvas = await html2canvas(element, {
+      const canvas = await html2canvas(templateRef.current, {
         scale: 2,
         backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' :
           currentTemplate === 'bookmark' ? '#fef3e2' :
@@ -138,13 +94,6 @@ export default function Home() {
         logging: false,
         useCORS: true,
         allowTaint: true,
-      });
-      
-      // Restore all original styles
-      styleBackup.forEach((styles, el) => {
-        el.style.backgroundColor = styles.bg;
-        el.style.color = styles.color;
-        el.style.borderColor = styles.border;
       });
 
       const link = document.createElement('a');
