@@ -396,6 +396,7 @@ export default function PhotographerProfilePage() {
         lens: uploadForm.lens || undefined,
         settings: uploadForm.settings || undefined,
         takenAt: uploadForm.takenAt || undefined,
+        albumId: uploadForm.albumId || undefined, // Include album selection
       };
 
       // Save photo metadata to backend
@@ -512,25 +513,29 @@ export default function PhotographerProfilePage() {
           return;
         }
 
-        const [profileRes, photosRes] = await Promise.all([
+        // 并行获取用户信息、作品和相册
+        const [profileRes, photosRes, albumsRes] = await Promise.all([
           fetch(API_ENDPOINTS.getUserProfile(username)),
-          fetch(API_ENDPOINTS.getUserPhotos(username)), // 获取摄影作品，不是卡片
+          fetch(API_ENDPOINTS.getUserPhotos(username)),
+          fetch(API_ENDPOINTS.getUserAlbums(username)),
         ]);
 
-        if (!profileRes.ok || !photosRes.ok) {
+        if (!profileRes.ok) {
           throw new Error('用户不存在');
         }
 
-        const [profileData, photosData] = await Promise.all([
+        const [profileData, photosData, albumsData] = await Promise.all([
           profileRes.json(),
-          photosRes.json(),
+          photosRes.ok ? photosRes.json() : { photos: [] },
+          albumsRes.ok ? albumsRes.json() : { albums: [] },
         ]);
 
         setProfile({
           ...profileData,
           photoCount: profileData.photoCount || profileData.designCount,
         });
-        setPhotos(photosData.photos || photosData); // 摄影作品数组
+        setPhotos(photosData.photos || photosData || []);
+        setAlbums(albumsData.albums || albumsData || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : '加载失败');
       } finally {
@@ -767,22 +772,23 @@ export default function PhotographerProfilePage() {
       )}
 
       {/* Photo Grid - Masonry Layout */}
-      <div className="px-6 pb-20 pt-32">
-        {(() => {
-          // 过滤照片：根据选中的相册
-          const filteredPhotos = selectedAlbum
-            ? photos.filter(photo => photo.albumId === selectedAlbum)
-            : photos;
+      {photos.length > 0 && (
+        <div className="px-6 pb-20 pt-32">
+          {(() => {
+            // 过滤照片：根据选中的相册
+            const filteredPhotos = selectedAlbum
+              ? photos.filter(photo => photo.albumId === selectedAlbum)
+              : photos;
 
-          if (filteredPhotos.length === 0) {
-            return (
-              <div className="text-center py-32">
-                <p className="text-stone-600 text-sm font-light">
-                  {selectedAlbum ? '该相册暂无作品' : 'No works yet'}
-                </p>
-              </div>
-            );
-          }
+            if (filteredPhotos.length === 0) {
+              return (
+                <div className="text-center py-32">
+                  <p className="text-stone-600 text-sm font-light">
+                    {selectedAlbum ? '该相册暂无作品' : 'No works yet'}
+                  </p>
+                </div>
+              );
+            }
 
           return (
             <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
@@ -834,7 +840,8 @@ export default function PhotographerProfilePage() {
             </div>
           );
         })()}
-      </div>
+        </div>
+      )}
 
       {/* Lightbox Modal */}
       {selectedPhoto && (
@@ -1208,45 +1215,65 @@ export default function PhotographerProfilePage() {
                   e.preventDefault();
                   if (!albumForm.name.trim()) return;
 
-                  if (editingAlbum) {
-                    // 编辑相册
-                    const token = localStorage.getItem('auth_token');
-                    const response = await fetch(API_ENDPOINTS.updateAlbum(currentUser!.username, editingAlbum.id), {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                      },
-                      body: JSON.stringify({ 
-                        name: albumForm.name, 
-                        description: albumForm.description 
-                      }),
-                    });
+                  try {
+                    if (editingAlbum) {
+                      // 编辑相册
+                      const token = localStorage.getItem('auth_token');
+                      const response = await fetch(API_ENDPOINTS.updateAlbum(currentUser!.username, editingAlbum.id), {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify({ 
+                          name: albumForm.name, 
+                          description: albumForm.description 
+                        }),
+                      });
 
-                    if (response.ok) {
+                      if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || '相册更新失败');
+                      }
+
+                      const updatedAlbum = await response.json();
                       setAlbums(albums.map(album => 
-                        album.id === editingAlbum.id
-                          ? { ...album, name: albumForm.name, description: albumForm.description }
-                          : album
+                        album.id === editingAlbum.id ? updatedAlbum : album
                       ));
                       alert('相册更新成功！');
+                    } else {
+                      // 创建相册 - 保存到后端
+                      const token = localStorage.getItem('auth_token');
+                      const response = await fetch(API_ENDPOINTS.createAlbum(currentUser!.username), {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify({ 
+                          name: albumForm.name, 
+                          description: albumForm.description 
+                        }),
+                      });
+
+                      if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || '相册创建失败');
+                      }
+
+                      const createdAlbum = await response.json();
+                      setAlbums([...albums, createdAlbum]);
+                      alert('相册创建成功！');
                     }
-                  } else {
-                    // 创建相册
-                    const newAlbum: Album = {
-                      id: `album-${Date.now()}`,
-                      name: albumForm.name,
-                      description: albumForm.description,
-                      photoCount: 0,
-                      createdAt: new Date().toISOString(),
-                    };
-                    setAlbums([...albums, newAlbum]);
-                    alert('相册创建成功！');
+                    
+                    setShowAlbumModal(false);
+                    setAlbumForm({ name: '', description: '' });
+                    setEditingAlbum(null);
+                  } catch (error) {
+                    console.error('Album operation error:', error);
+                    const errorMessage = error instanceof Error ? error.message : '操作失败，请稍后再试';
+                    alert(errorMessage);
                   }
-                  
-                  setShowAlbumModal(false);
-                  setAlbumForm({ name: '', description: '' });
-                  setEditingAlbum(null);
                 }}
                 className="space-y-6"
               >
