@@ -326,18 +326,6 @@ export default function Home() {
                   <div ref={postcardInnerRef} className="bg-white p-6 rounded-2xl shadow-inner relative">
                     {image ? (
                       <div className="relative aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
-                        {/* Subtle film perforations on left */}
-                        <div className="absolute left-1 top-0 bottom-0 w-1 flex flex-col justify-around py-4">
-                          {[...Array(8)].map((_, i) => (
-                            <div key={`l-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
-                          ))}
-                        </div>
-                        {/* Subtle film perforations on right */}
-                        <div className="absolute right-1 top-0 bottom-0 w-1 flex flex-col justify-around py-4">
-                          {[...Array(8)].map((_, i) => (
-                            <div key={`r-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
-                          ))}
-                        </div>
                         <img
                           src={image}
                           alt="Uploaded"
