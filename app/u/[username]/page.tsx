@@ -418,6 +418,16 @@ export default function PhotographerProfilePage() {
 
       // Add to local state
       setPhotos([savedPhoto, ...photos]);
+      
+      // Update album photo count if photo was added to an album
+      if (savedPhoto.albumId) {
+        setAlbums(albums.map(album => 
+          album.id === savedPhoto.albumId
+            ? { ...album, photoCount: album.photoCount + 1 }
+            : album
+        ));
+      }
+      
       setShowUploadModal(false);
       
       // Reset form
@@ -532,6 +542,7 @@ export default function PhotographerProfilePage() {
 
         setProfile({
           ...profileData,
+          avatar: profileData.avatarUrl || profileData.avatar, // Normalize avatar field
           photoCount: profileData.photoCount || profileData.designCount,
         });
         setPhotos(photosData.photos || photosData || []);
