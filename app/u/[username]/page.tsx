@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/app/config/api';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface Photo {
   id: string;
@@ -24,18 +25,154 @@ interface PhotographerProfile {
   avatar?: string;
   photoCount: number;
   website?: string;
-  instagram?: string;
+  xiaohongshu?: string;
 }
 
 export default function PhotographerProfilePage() {
   const params = useParams();
   const username = params.username as string;
+  const { user: currentUser } = useAuth();
   
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    image: null as File | null,
+    title: '',
+    description: '',
+    location: '',
+    camera: '',
+    lens: '',
+    settings: '',
+    takenAt: '',
+  });
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const isOwnProfile = currentUser && currentUser.username === username;
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type - only JPG/JPEG
+    const allowedTypes = ['image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      alert('只支持上传 JPG/JPEG 格式的图片');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validate file size - 30MB limit
+    const MAX_SIZE = 30 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert('图片大小不能超过30MB');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    setUploadForm({ ...uploadForm, image: file });
+
+    // Preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadForm.image || !currentUser) return;
+
+    // Check photo limit
+    const MAX_PHOTOS = 50;
+    if (photos.length >= MAX_PHOTOS) {
+      alert(`每个用户最多只能上传${MAX_PHOTOS}张作品。请先删除一些旧作品后再上传。`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // First upload the image
+      const formData = new FormData();
+      formData.append('image', uploadForm.image);
+
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const uploadRes = await fetch(API_ENDPOINTS.uploadImage, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Image upload failed');
+      }
+
+      const uploadData = await uploadRes.json();
+      const imageUrl = uploadData.url || uploadData.imageUrl;
+
+      // Then create the photo entry
+      const photoData = {
+        imageUrl,
+        title: uploadForm.title || undefined,
+        description: uploadForm.description || undefined,
+        location: uploadForm.location || undefined,
+        camera: uploadForm.camera || undefined,
+        lens: uploadForm.lens || undefined,
+        settings: uploadForm.settings || undefined,
+        takenAt: uploadForm.takenAt || undefined,
+      };
+
+      // Save photo metadata to backend
+      const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(photoData),
+      });
+
+      if (!saveRes.ok) {
+        throw new Error('Failed to save photo metadata');
+      }
+
+      const savedPhoto = await saveRes.json();
+
+      // Add to local state
+      setPhotos([savedPhoto, ...photos]);
+      setShowUploadModal(false);
+      
+      // Reset form
+      setUploadForm({
+        image: null,
+        title: '',
+        description: '',
+        location: '',
+        camera: '',
+        lens: '',
+        settings: '',
+        takenAt: '',
+      });
+      setUploadPreview(null);
+
+      alert('作品上传成功！');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('上传失败，请稍后再试');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -48,7 +185,7 @@ export default function PhotographerProfilePage() {
             bio: 'Street photographer capturing moments of everyday beauty. Based in Tokyo & Shanghai.',
             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
             photoCount: 12,
-            instagram: 'https://instagram.com/alexchen',
+            xiaohongshu: 'https://www.xiaohongshu.com/user/profile/alexchen',
           });
           setPhotos([
             {
@@ -105,7 +242,7 @@ export default function PhotographerProfilePage() {
 
         const [profileRes, photosRes] = await Promise.all([
           fetch(API_ENDPOINTS.getUserProfile(username)),
-          fetch(API_ENDPOINTS.getUserDesigns(username)),
+          fetch(API_ENDPOINTS.getUserPhotos(username)), // 获取摄影作品，不是卡片
         ]);
 
         if (!profileRes.ok || !photosRes.ok) {
@@ -119,9 +256,9 @@ export default function PhotographerProfilePage() {
 
         setProfile({
           ...profileData,
-          photoCount: profileData.designCount || profileData.photoCount,
+          photoCount: profileData.photoCount || profileData.designCount,
         });
-        setPhotos(photosData.designs || photosData.photos || photosData);
+        setPhotos(photosData.photos || photosData); // 摄影作品数组
       } catch (err) {
         setError(err instanceof Error ? err.message : '加载失败');
       } finally {
@@ -187,10 +324,24 @@ export default function PhotographerProfilePage() {
           
           <div className="flex items-center gap-6 text-xs text-stone-500">
             <span>{profile.photoCount} works</span>
-            {profile.instagram && (
-              <a href={profile.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-stone-300 transition-colors">
-                Instagram
+            {profile.xiaohongshu && (
+              <a href={profile.xiaohongshu} target="_blank" rel="noopener noreferrer" className="hover:text-stone-300 transition-colors">
+                小红书
               </a>
+            )}
+            {isOwnProfile && (
+              <>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="hover:text-stone-300 transition-colors"
+                  title={`已上传 ${profile.photoCount}/50 张作品`}
+                >
+                  上传作品
+                </button>
+                <a href="#" className="hover:text-stone-300 transition-colors">
+                  设置
+                </a>
+              </>
             )}
           </div>
         </div>
@@ -318,6 +469,188 @@ export default function PhotographerProfilePage() {
       <footer className="border-t border-stone-900 py-12 text-center">
         <p className="text-stone-600 text-xs font-light tracking-wider">© {new Date().getFullYear()} {profile.displayName}</p>
       </footer>
+
+      {/* Upload Modal */}
+      {showUploadModal && isOwnProfile && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-stone-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-light text-white">上传摄影作品</h2>
+                  <p className="text-xs text-stone-500 mt-1">
+                    已上传 {photos.length}/50 张作品
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setUploadPreview(null);
+                  }}
+                  className="text-stone-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleUploadSubmit} className="space-y-6">
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-3 font-light tracking-wide">
+                    选择照片 * <span className="text-stone-600">(仅支持 JPG 格式，最大 30MB)</span>
+                  </label>
+                  {uploadPreview ? (
+                    <div className="relative aspect-video bg-stone-800 rounded overflow-hidden mb-3">
+                      <img src={uploadPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadForm({ ...uploadForm, image: null });
+                          setUploadPreview(null);
+                        }}
+                        className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded hover:bg-black/70 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,.jpg,.jpeg"
+                      onChange={handleImageSelect}
+                      required
+                      className="block w-full text-sm text-stone-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:bg-stone-800 file:text-stone-300 hover:file:bg-stone-700 file:cursor-pointer cursor-pointer"
+                    />
+                  )}
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    标题
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadForm.title}
+                    onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="Golden Hour"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    描述
+                  </label>
+                  <textarea
+                    value={uploadForm.description}
+                    onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                    rows={3}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors resize-none"
+                    placeholder="A beautiful moment captured..."
+                  />
+                </div>
+
+                {/* Location & Date */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      拍摄地点
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadForm.location}
+                      onChange={(e) => setUploadForm({ ...uploadForm, location: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      placeholder="Tokyo, Japan"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      拍摄日期
+                    </label>
+                    <input
+                      type="date"
+                      value={uploadForm.takenAt}
+                      onChange={(e) => setUploadForm({ ...uploadForm, takenAt: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Camera & Lens */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      相机
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadForm.camera}
+                      onChange={(e) => setUploadForm({ ...uploadForm, camera: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      placeholder="Leica M11"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      镜头
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadForm.lens}
+                      onChange={(e) => setUploadForm({ ...uploadForm, lens: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      placeholder="50mm f/1.4"
+                    />
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    拍摄参数
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadForm.settings}
+                    onChange={(e) => setUploadForm({ ...uploadForm, settings: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="ISO 400, f/2.8, 1/500s"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={uploading || !uploadForm.image}
+                    className="flex-1 bg-white text-black py-3 rounded font-light text-sm hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploading ? '上传中...' : '上传作品'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadPreview(null);
+                    }}
+                    className="px-6 bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,8 +9,10 @@ import PolaroidTemplate from './components/templates/PolaroidTemplate';
 import GreetingTemplate from './components/templates/GreetingTemplate';
 import { QRCodeSVG } from 'qrcode.react';
 import { API_ENDPOINTS } from './config/api';
+import { useAuth } from './context/AuthContext';
 
 export default function Home() {
+  const { user, isAuthenticated, logout } = useAuth();
   const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('postcard');
   const [image, setImage] = useState<string | null>(null);
   const [uploadedImageId, setUploadedImageId] = useState<string | null>(null);
@@ -59,8 +61,15 @@ export default function Home() {
       const formData = new FormData();
       formData.append('image', file);
 
+      const headers: HeadersInit = {};
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(API_ENDPOINTS.uploadImage, {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -220,7 +229,41 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-stone-100 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <header className="text-center mb-8">
+        <header className="text-center mb-8 relative">
+          {/* User Menu - Top Right */}
+          <div className="absolute top-0 right-0 flex items-center gap-4">
+            {isAuthenticated && user ? (
+              <>
+                <a
+                  href={`/u/${user.username}`}
+                  className="flex items-center gap-2 text-stone-600 hover:text-stone-800 transition-colors"
+                >
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.displayName} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-stone-300 flex items-center justify-center text-white text-xs">
+                      {user.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm font-light">{user.displayName}</span>
+                </a>
+                <button
+                  onClick={logout}
+                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                >
+                  退出
+                </button>
+              </>
+            ) : (
+              <a
+                href="/auth"
+                className="text-sm text-stone-600 hover:text-stone-800 transition-colors font-light border-b border-stone-400 hover:border-stone-800 pb-0.5"
+              >
+                登录
+              </a>
+            )}
+          </div>
+
           <h1 className="text-5xl font-serif font-light text-stone-800 mb-3 tracking-wide">
             胶片创作工坊
           </h1>
@@ -282,13 +325,26 @@ export default function Home() {
                     二维码链接
                   </label>
                   <p className="text-xs text-stone-500 mb-2">
-                    还没有个人作品空间？<a href="#" className="text-amber-600 hover:text-amber-700 underline">点击创建</a>你的专属页面（如：film.isnap.world/u/yourname）
+                    {isAuthenticated && user ? (
+                      <>
+                        你的个人主页：
+                        <a href={`/u/${user.username}`} target="_blank" className="text-amber-600 hover:text-amber-700 underline">
+                          film.isnap.world/u/{user.username}
+                        </a>
+                      </>
+                    ) : (
+                      <>
+                        还没有个人作品空间？
+                        <a href="/auth" className="text-amber-600 hover:text-amber-700 underline">点击创建</a>
+                        你的专属页面（如：film.isnap.world/u/yourname）
+                      </>
+                    )}
                   </p>
                   <input
                     type="url"
                     value={qrUrl}
                     onChange={(e) => setQrUrl(e.target.value)}
-                    placeholder="https://film.isnap.world/u/yourname"
+                    placeholder={isAuthenticated && user ? `https://film.isnap.world/u/${user.username}` : "https://film.isnap.world/u/yourname"}
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent text-stone-700 placeholder:text-stone-400 bg-white/80"
                   />
                 </div>
