@@ -1,4 +1,4 @@
-export type TemplateType = 'postcard' | 'bookmark' | 'polaroid' | 'greeting';
+export type TemplateType = 'postcard' | 'bookmark' | 'polaroid' | 'greeting' | 'businesscard';
 
 export interface TemplateData {
   image: string | null;

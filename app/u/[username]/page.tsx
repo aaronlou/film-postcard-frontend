@@ -51,8 +51,67 @@ export default function PhotographerProfilePage() {
   });
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const isOwnProfile = currentUser && currentUser.username === username;
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    // Validate file type - only JPG/JPEG
+    const allowedTypes = ['image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      alert('只支持上传 JPG/JPEG 格式的图片');
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file size - 5MB limit for avatar
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert('头像大小不能超过5MB');
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(API_ENDPOINTS.uploadAvatar(currentUser.username), {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Avatar upload failed');
+      }
+
+      const updatedProfile = await response.json();
+      
+      // Update profile state with new avatar
+      setProfile(prev => prev ? {
+        ...prev,
+        avatar: updatedProfile.avatarUrl || updatedProfile.avatar
+      } : null);
+
+      alert('头像更新成功！');
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      alert('头像上传失败，请稍后再试');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -319,14 +378,68 @@ export default function PhotographerProfilePage() {
 
             <div className="flex items-center gap-4">
             {profile.avatar ? (
-              <img
-                src={profile.avatar}
-                alt={profile.displayName}
-                className="w-10 h-10 rounded-full object-cover opacity-90"
-              />
+              <div className="relative group">
+                <img
+                  src={profile.avatar}
+                  alt={profile.displayName}
+                  className="w-10 h-10 rounded-full object-cover opacity-90"
+                />
+                {isOwnProfile && (
+                  <>
+                    <label
+                      htmlFor="avatar-upload"
+                      className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                    >
+                      {uploadingAvatar ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      ) : (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      )}
+                    </label>
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/jpeg,image/jpg,.jpg,.jpeg"
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="hidden"
+                    />
+                  </>
+                )}
+              </div>
             ) : (
-              <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
-                {profile.displayName.charAt(0).toUpperCase()}
+              <div className="relative group">
+                <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
+                  {profile.displayName.charAt(0).toUpperCase()}
+                </div>
+                {isOwnProfile && (
+                  <>
+                    <label
+                      htmlFor="avatar-upload"
+                      className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                    >
+                      {uploadingAvatar ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      ) : (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      )}
+                    </label>
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/jpeg,image/jpg,.jpg,.jpeg"
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="hidden"
+                    />
+                  </>
+                )}
               </div>
             )}
             <div>

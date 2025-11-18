@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { TemplateType } from './types/template';
 import TemplateSwitcher from './components/TemplateSwitcher';
 import BookmarkTemplate from './components/templates/BookmarkTemplate';
 import PolaroidTemplate from './components/templates/PolaroidTemplate';
 import GreetingTemplate from './components/templates/GreetingTemplate';
+import BusinessCardTemplate from './components/templates/BusinessCardTemplate';
 import { QRCodeSVG } from 'qrcode.react';
 import { API_ENDPOINTS } from './config/api';
 import { useAuth } from './context/AuthContext';
@@ -32,10 +33,20 @@ export default function Home() {
   const bookmarkRef = useRef<HTMLDivElement>(null);
   const polaroidRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<HTMLDivElement>(null);
+  const businessCardRef = useRef<HTMLDivElement>(null);
 
   const templateRef = currentTemplate === 'postcard' ? postcardInnerRef :
     currentTemplate === 'bookmark' ? bookmarkRef :
-      currentTemplate === 'polaroid' ? polaroidRef : greetingRef;
+      currentTemplate === 'polaroid' ? polaroidRef :
+        currentTemplate === 'businesscard' ? businessCardRef : greetingRef;
+
+  // Auto-fill user's personal homepage URL when authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && user.username) {
+      const personalUrl = `https://film.isnap.world/u/${user.username}`;
+      setQrUrl(personalUrl);
+    }
+  }, [isAuthenticated, user]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,7 +137,8 @@ export default function Home() {
       const link = document.createElement('a');
       const templateName = currentTemplate === 'postcard' ? 'postcard' :
         currentTemplate === 'bookmark' ? 'bookmark' :
-          currentTemplate === 'polaroid' ? 'polaroid' : 'greeting';
+          currentTemplate === 'polaroid' ? 'polaroid' :
+            currentTemplate === 'businesscard' ? 'businesscard' : 'greeting';
       link.download = `${templateName}-${Date.now()}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
@@ -236,20 +248,31 @@ export default function Home() {
               <>
                 <a
                   href={`/u/${user.username}`}
-                  className="flex items-center gap-2 text-stone-600 hover:text-stone-800 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-stone-200 hover:bg-white hover:shadow-md transition-all group"
+                  title="查看我的为个人主页"
                 >
                   {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.displayName} className="w-8 h-8 rounded-full object-cover" />
+                    <img 
+                      src={user.avatarUrl} 
+                      alt={user.displayName} 
+                      className="w-8 h-8 rounded-full object-cover ring-2 ring-stone-200 group-hover:ring-stone-400 transition-all" 
+                    />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-stone-300 flex items-center justify-center text-white text-xs">
+                    <div className="w-8 h-8 rounded-full bg-stone-300 flex items-center justify-center text-white text-xs ring-2 ring-stone-200 group-hover:ring-stone-400 transition-all">
                       {user.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-sm font-light">{user.displayName}</span>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium text-stone-800">{user.displayName}</span>
+                    <span className="text-xs text-stone-500">个人主页</span>
+                  </div>
+                  <svg className="w-4 h-4 text-stone-400 group-hover:text-stone-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </a>
                 <button
                   onClick={logout}
-                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors px-3 py-2 rounded-full hover:bg-stone-100"
                 >
                   退出
                 </button>
@@ -301,7 +324,7 @@ export default function Home() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-stone-700">
-                      写下你的文字
+                      {currentTemplate === 'businesscard' ? '职位/个人签名' : '写下你的文字'}
                     </label>
                     <button
                       onClick={handlePolishText}
@@ -314,7 +337,7 @@ export default function Home() {
                   <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融"
+                    placeholder={currentTemplate === 'businesscard' ? 'PHOTOGRAPHER / 独立摄影师' : '全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融'}
                     rows={4}
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none text-stone-700 placeholder:text-stone-400 bg-white/80"
                   />
@@ -327,9 +350,9 @@ export default function Home() {
                   <p className="text-xs text-stone-500 mb-2">
                     {isAuthenticated && user ? (
                       <>
-                        你的个人主页：
+                        已自动填充你的个人主页：
                         <a href={`/u/${user.username}`} target="_blank" className="text-amber-600 hover:text-amber-700 underline">
-                          film.isnap.world/u/{user.username}
+                          https://film.isnap.world/u/{user.username}
                         </a>
                       </>
                     ) : (
@@ -356,7 +379,8 @@ export default function Home() {
                 >
                   {currentTemplate === 'postcard' ? '下载明信片' :
                     currentTemplate === 'bookmark' ? '下载书签' :
-                      currentTemplate === 'polaroid' ? '下载拍立得' : '下载贺卡'}
+                      currentTemplate === 'polaroid' ? '下载拍立得' :
+                        currentTemplate === 'businesscard' ? '下载名片' : '下载贺卡'}
                 </button>
 
                 <button
@@ -442,6 +466,14 @@ export default function Home() {
                 ref={polaroidRef}
                 data={{ image, text, qrUrl }}
               />
+            ) : currentTemplate === 'businesscard' ? (
+              <div ref={businessCardRef}>
+                <BusinessCardTemplate
+                  image={image}
+                  text={text}
+                  qrUrl={qrUrl}
+                />
+              </div>
             ) : (
               <GreetingTemplate
                 ref={greetingRef}

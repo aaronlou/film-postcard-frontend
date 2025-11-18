@@ -31,4 +31,12 @@ export const TEMPLATE_CONFIGS = [
     description: 'Elegant greeting card for special occasions',
     descriptionCN: '精致祝福贺卡，适合各种场合',
   },
+  {
+    id: 'businesscard' as const,
+    name: 'Business Card',
+    nameCN: '摄影师名片',
+    icon: '👤',
+    description: 'Professional photographer business card',
+    descriptionCN: '专业摄影师个人名片',
+  },
 ];
