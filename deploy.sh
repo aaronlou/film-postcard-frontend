@@ -16,6 +16,10 @@ echo "🚀 Starting deployment..."
 echo "📦 Installing dependencies..."
 npm install
 
+# Clean cache to ensure fresh build
+echo "🧹 Cleaning cache..."
+rm -rf .next node_modules/.cache
+
 # Build the application
 echo "🔨 Building Next.js application..."
 NODE_ENV=production npm run build

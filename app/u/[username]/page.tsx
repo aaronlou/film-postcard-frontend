@@ -75,7 +75,7 @@ export default function UserProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-stone-300 border-t-stone-800 mb-4"></div>
           <p className="text-stone-600">加载中...</p>
@@ -86,7 +86,7 @@ export default function UserProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md text-center">
           <svg className="w-16 h-16 mx-auto mb-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -105,7 +105,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 py-12 px-4">
+    <div className="min-h-screen bg-stone-100 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         {/* User Profile Header */}
         <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-stone-200 mb-8">
@@ -119,7 +119,7 @@ export default function UserProfilePage() {
                   className="w-24 h-24 rounded-full object-cover border-4 border-stone-200"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-stone-300 to-stone-400 flex items-center justify-center text-white text-3xl font-serif">
+                <div className="w-24 h-24 rounded-full bg-stone-300 flex items-center justify-center text-white text-3xl font-serif">
                   {profile.displayName.charAt(0).toUpperCase()}
                 </div>
               )}
