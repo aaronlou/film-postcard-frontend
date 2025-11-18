@@ -25,10 +25,11 @@ export default function BusinessCardTemplate({ image, text, qrUrl }: BusinessCar
           </div>
           
           {/* Avatar/Photo - Apple-style elegant circular design */}
-          {(image || user?.avatarUrl) ? (
+          {/* Priority: user avatar > uploaded image > fallback letter */}
+          {(user?.avatarUrl || image) ? (
             <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200 ml-4 flex-shrink-0 ring-2 ring-stone-200 ring-offset-2 shadow-sm">
               <img
-                src={image || user?.avatarUrl || ''}
+                src={user?.avatarUrl || image || ''}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />

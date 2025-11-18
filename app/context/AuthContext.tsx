@@ -13,6 +13,12 @@ interface User {
   website?: string;
   location?: string;
   designCount: number;
+  // Storage quota fields
+  userTier?: 'FREE' | 'BASIC' | 'PRO';
+  storageUsed?: number;      // Bytes used
+  storageLimit?: number;     // Total bytes allowed
+  photoLimit?: number;       // Max photo count
+  singleFileLimit?: number;  // Max bytes per file
 }
 
 interface AuthContextType {

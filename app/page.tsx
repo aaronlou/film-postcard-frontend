@@ -52,10 +52,12 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size - 30MB limit
-    const MAX_SIZE = 30 * 1024 * 1024; // 30MB
-    if (file.size > MAX_SIZE) {
-      alert('图片大小不能超过30MB');
+    // Validate file size - use user's tier limit
+    const maxSize = user?.singleFileLimit || (10 * 1024 * 1024); // Default 10MB for FREE
+    if (file.size > maxSize) {
+      const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(0);
+      const tierName = user?.userTier || 'FREE';
+      alert(`图片大小不能超过${maxSizeMB}MB（${tierName} 等级限制）`);
       return;
     }
 
@@ -85,7 +87,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Image upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Image upload failed');
       }
 
       const data = await response.json();
@@ -97,7 +100,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('图片上传失败，请稍后再试');
+      const errorMessage = error instanceof Error ? error.message : '图片上传失败，请稍后再试';
+      alert(errorMessage);
     } finally {
       setIsUploadingImage(false);
     }
@@ -312,6 +316,16 @@ export default function Home() {
                       <span className="ml-2 text-xs text-stone-500 italic">上传中...</span>
                     )}
                   </label>
+                  {isAuthenticated && user && (
+                    <p className="text-xs text-stone-500 mb-2">
+                      {user.userTier || 'FREE'} 等级 | 单文件最大 {((user.singleFileLimit || 10 * 1024 * 1024) / (1024 * 1024)).toFixed(0)}MB
+                      {user.storageUsed !== undefined && user.storageLimit && (
+                        <span className="ml-2">
+                          | 已使用 {((user.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB/{((user.storageLimit) / (1024 * 1024)).toFixed(0)}MB
+                        </span>
+                      )}
+                    </p>
+                  )}
                   <input
                     type="file"
                     accept="image/*"

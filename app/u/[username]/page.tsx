@@ -31,7 +31,7 @@ interface PhotographerProfile {
 export default function PhotographerProfilePage() {
   const params = useParams();
   const username = params.username as string;
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -52,8 +52,52 @@ export default function PhotographerProfilePage() {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
 
   const isOwnProfile = currentUser && currentUser.username === username;
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!currentUser || !confirm('确定要删除这张作品吗？此操作不可撤销。')) return;
+
+    setDeletingPhotoId(photoId);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(API_ENDPOINTS.deletePhoto(currentUser.username, photoId), {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Delete failed');
+      }
+
+      // Remove from local state
+      setPhotos(photos.filter(p => p.id !== photoId));
+      
+      // Update profile photo count
+      setProfile(prev => prev ? {
+        ...prev,
+        photoCount: prev.photoCount - 1
+      } : null);
+
+      // Close lightbox if this photo was selected
+      if (selectedPhoto?.id === photoId) {
+        setSelectedPhoto(null);
+      }
+
+      alert('作品已删除');
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('删除失败，请稍后再试');
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,10 +111,11 @@ export default function PhotographerProfilePage() {
       return;
     }
 
-    // Validate file size - 5MB limit for avatar
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      alert('头像大小不能超过5MB');
+    // Validate file size - use tier limit (avatars typically use same limit as photos)
+    const maxSize = currentUser.singleFileLimit || (10 * 1024 * 1024); // Default 10MB for FREE tier
+    if (file.size > maxSize) {
+      const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(0);
+      alert(`头像大小不能超过${maxSizeMB}MB`);
       e.target.value = '';
       return;
     }
@@ -93,7 +138,8 @@ export default function PhotographerProfilePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Avatar upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Avatar upload failed');
       }
 
       const updatedProfile = await response.json();
@@ -104,10 +150,14 @@ export default function PhotographerProfilePage() {
         avatar: updatedProfile.avatarUrl || updatedProfile.avatar
       } : null);
 
+      // Refresh auth context to persist avatar globally
+      await refreshUser();
+
       alert('头像更新成功！');
     } catch (error) {
       console.error('Avatar upload error:', error);
-      alert('头像上传失败，请稍后再试');
+      const errorMessage = error instanceof Error ? error.message : '头像上传失败，请稍后再试';
+      alert(errorMessage);
     } finally {
       setUploadingAvatar(false);
     }
@@ -125,10 +175,11 @@ export default function PhotographerProfilePage() {
       return;
     }
 
-    // Validate file size - 30MB limit
-    const MAX_SIZE = 30 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      alert('图片大小不能超过30MB');
+    // Validate file size against user's tier limit
+    const maxSize = currentUser?.singleFileLimit || (10 * 1024 * 1024); // Default 10MB for FREE tier
+    if (file.size > maxSize) {
+      const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(0);
+      alert(`图片大小不能超过${maxSizeMB}MB（您当前等级限制）`);
       e.target.value = ''; // Reset input
       return;
     }
@@ -147,10 +198,11 @@ export default function PhotographerProfilePage() {
     e.preventDefault();
     if (!uploadForm.image || !currentUser) return;
 
-    // Check photo limit
-    const MAX_PHOTOS = 50;
-    if (photos.length >= MAX_PHOTOS) {
-      alert(`每个用户最多只能上传${MAX_PHOTOS}张作品。请先删除一些旧作品后再上传。`);
+    // Check photo limit from user's tier
+    const photoLimit = currentUser.photoLimit || 20; // Default FREE tier: 20 photos
+    if (photos.length >= photoLimit) {
+      const tierName = currentUser.userTier || 'FREE';
+      alert(`已达到作品数量上限！您的 ${tierName} 等级最多可上传 ${photoLimit} 张作品。请删除一些旧作品后再上传，或升级会员。`);
       return;
     }
 
@@ -173,7 +225,8 @@ export default function PhotographerProfilePage() {
       });
 
       if (!uploadRes.ok) {
-        throw new Error('Image upload failed');
+        const errorData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Image upload failed');
       }
 
       const uploadData = await uploadRes.json();
@@ -202,7 +255,8 @@ export default function PhotographerProfilePage() {
       });
 
       if (!saveRes.ok) {
-        throw new Error('Failed to save photo metadata');
+        const errorData = await saveRes.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to save photo metadata');
       }
 
       const savedPhoto = await saveRes.json();
@@ -224,10 +278,14 @@ export default function PhotographerProfilePage() {
       });
       setUploadPreview(null);
 
+      // Refresh user data to update storage quota
+      await refreshUser();
+
       alert('作品上传成功！');
     } catch (error) {
       console.error('Upload error:', error);
-      alert('上传失败，请稍后再试');
+      const errorMessage = error instanceof Error ? error.message : '上传失败，请稍后再试';
+      alert(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -461,7 +519,7 @@ export default function PhotographerProfilePage() {
                 <button
                   onClick={() => setShowUploadModal(true)}
                   className="hover:text-stone-300 transition-colors"
-                  title={`已上传 ${profile.photoCount}/50 张作品`}
+                  title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20} 张作品 | ${currentUser?.userTier || 'FREE'} 等级`}
                 >
                   上传作品
                 </button>
@@ -496,10 +554,9 @@ export default function PhotographerProfilePage() {
             {photos.map((photo) => (
               <div
                 key={photo.id}
-                className="break-inside-avoid group cursor-pointer"
-                onClick={() => setSelectedPhoto(photo)}
+                className="break-inside-avoid group cursor-pointer relative"
               >
-                <div className="relative overflow-hidden bg-stone-900">
+                <div className="relative overflow-hidden bg-stone-900" onClick={() => setSelectedPhoto(photo)}>
                   <img
                     src={photo.imageUrl}
                     alt={photo.title || 'Photography work'}
@@ -517,6 +574,26 @@ export default function PhotographerProfilePage() {
                     </div>
                   </div>
                 </div>
+                {/* Delete button - only for own profile */}
+                {isOwnProfile && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePhoto(photo.id);
+                    }}
+                    disabled={deletingPhotoId === photo.id}
+                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 z-10"
+                    title="删除作品"
+                  >
+                    {deletingPhotoId === photo.id ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -538,6 +615,29 @@ export default function PhotographerProfilePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+
+          {/* Delete button - only for own profile */}
+          {isOwnProfile && (
+            <button
+              onClick={() => handleDeletePhoto(selectedPhoto.id)}
+              disabled={deletingPhotoId === selectedPhoto.id}
+              className="absolute top-6 right-20 bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-full transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {deletingPhotoId === selectedPhoto.id ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  <span className="text-sm font-light">删除中...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="text-sm font-light">删除</span>
+                </>
+              )}
+            </button>
+          )}
 
           <div className="max-w-6xl w-full flex flex-col md:flex-row gap-8 items-center" onClick={(e) => e.stopPropagation()}>
             {/* Image */}
@@ -607,7 +707,19 @@ export default function PhotographerProfilePage() {
                 <div>
                   <h2 className="text-xl font-light text-white">上传摄影作品</h2>
                   <p className="text-xs text-stone-500 mt-1">
-                    已上传 {photos.length}/50 张作品
+                    已上传 {photos.length}/{currentUser?.photoLimit || 20} 张作品
+                    {currentUser?.storageUsed !== undefined && currentUser?.storageLimit && (
+                      <span className="ml-3">
+                        已使用 {((currentUser.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB / {((currentUser.storageLimit) / (1024 * 1024)).toFixed(0)}MB
+                        <span className={`ml-2 text-xs ${
+                          ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
+                          ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
+                          'text-green-400'
+                        }`}>
+                          ({Math.round(((currentUser.storageUsed || 0) / currentUser.storageLimit) * 100)}%)
+                        </span>
+                      </span>
+                    )}
                   </p>
                 </div>
                 <button
@@ -627,7 +739,7 @@ export default function PhotographerProfilePage() {
                 {/* Image Upload */}
                 <div>
                   <label className="block text-stone-400 text-xs mb-3 font-light tracking-wide">
-                    选择照片 * <span className="text-stone-600">(仅支持 JPG 格式，最大 30MB)</span>
+                    选择照片 * <span className="text-stone-600">(仅支持 JPG 格式，最大 {((currentUser?.singleFileLimit || 10 * 1024 * 1024) / (1024 * 1024)).toFixed(0)}MB)</span>
                   </label>
                   {uploadPreview ? (
                     <div className="relative aspect-video bg-stone-800 rounded overflow-hidden mb-3">
