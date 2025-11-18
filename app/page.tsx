@@ -87,7 +87,19 @@ export default function Home() {
     if (!templateRef.current) return;
 
     try {
-      const canvas = await html2canvas(templateRef.current, {
+      const element = templateRef.current;
+      
+      // Temporarily remove rounded corners and shadows for clean export
+      const originalClassList = element.className;
+      element.className = element.className
+        .replace('rounded-2xl', '')
+        .replace('shadow-inner', '')
+        .trim();
+      
+      // Small delay to ensure style changes are applied
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
@@ -98,6 +110,9 @@ export default function Home() {
         imageTimeout: 0,
         removeContainer: true,
       });
+      
+      // Restore original styling
+      element.className = originalClassList;
 
       const link = document.createElement('a');
       const templateName = currentTemplate === 'postcard' ? 'postcard' :
