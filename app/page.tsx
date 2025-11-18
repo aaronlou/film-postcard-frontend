@@ -200,7 +200,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-neutral-100 py-12 px-4">
+    <div className="min-h-screen bg-stone-100 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-5xl font-serif font-light text-stone-800 mb-3 tracking-wide">
