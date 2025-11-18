@@ -15,5 +15,11 @@ export const API_ENDPOINTS = {
   updateUserProfile: (username: string) => `${API_BASE_URL}/api/users/${username}`,
   uploadAvatar: (username: string) => `${API_BASE_URL}/api/users/${username}/avatar`,
   uploadPhoto: (username: string) => `${API_BASE_URL}/api/users/${username}/photos`,
+  updatePhoto: (username: string, photoId: string) => `${API_BASE_URL}/api/users/${username}/photos/${photoId}`,
   deletePhoto: (username: string, photoId: string) => `${API_BASE_URL}/api/users/${username}/photos/${photoId}`,
+  // Album endpoints
+  getUserAlbums: (username: string) => `${API_BASE_URL}/api/users/${username}/albums`,
+  createAlbum: (username: string) => `${API_BASE_URL}/api/users/${username}/albums`,
+  updateAlbum: (username: string, albumId: string) => `${API_BASE_URL}/api/users/${username}/albums/${albumId}`,
+  deleteAlbum: (username: string, albumId: string) => `${API_BASE_URL}/api/users/${username}/albums/${albumId}`,
 };

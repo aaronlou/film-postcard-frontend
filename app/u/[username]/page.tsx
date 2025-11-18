@@ -16,6 +16,16 @@ interface Photo {
   lens?: string;
   settings?: string;
   createdAt: string;
+  albumId?: string; // 所属相册ID
+}
+
+interface Album {
+  id: string;
+  name: string;
+  description?: string;
+  coverPhoto?: string;
+  photoCount: number;
+  createdAt: string;
 }
 
 interface PhotographerProfile {
@@ -35,6 +45,8 @@ export default function PhotographerProfilePage() {
   
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null); // null = 全部作品
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,11 +60,17 @@ export default function PhotographerProfilePage() {
     lens: '',
     settings: '',
     takenAt: '',
+    albumId: '', // 选择的相册ID
   });
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [showAlbumModal, setShowAlbumModal] = useState(false);
+  const [albumForm, setAlbumForm] = useState({ name: '', description: '' });
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [showMovePhotoModal, setShowMovePhotoModal] = useState(false);
+  const [movingPhoto, setMovingPhoto] = useState<Photo | null>(null);
 
   const isOwnProfile = currentUser && currentUser.username === username;
 
@@ -76,6 +94,8 @@ export default function PhotographerProfilePage() {
         throw new Error('Delete failed');
       }
 
+      const deletedPhoto = photos.find(p => p.id === photoId);
+
       // Remove from local state
       setPhotos(photos.filter(p => p.id !== photoId));
       
@@ -84,6 +104,15 @@ export default function PhotographerProfilePage() {
         ...prev,
         photoCount: prev.photoCount - 1
       } : null);
+
+      // Update album photo count if photo was in an album
+      if (deletedPhoto?.albumId) {
+        setAlbums(albums.map(album => 
+          album.id === deletedPhoto.albumId 
+            ? { ...album, photoCount: album.photoCount - 1 }
+            : album
+        ));
+      }
 
       // Close lightbox if this photo was selected
       if (selectedPhoto?.id === photoId) {
@@ -96,6 +125,131 @@ export default function PhotographerProfilePage() {
       alert('删除失败，请稍后再试');
     } finally {
       setDeletingPhotoId(null);
+    }
+  };
+
+  const handleDeleteAlbum = async (albumId: string) => {
+    if (!currentUser || !confirm('确定要删除这个相册吗？相册内的作品将变为未分类。')) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(API_ENDPOINTS.deleteAlbum(currentUser.username, albumId), {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Delete album failed');
+      }
+
+      // Remove album from state
+      setAlbums(albums.filter(a => a.id !== albumId));
+      
+      // Clear albumId from photos in this album
+      setPhotos(photos.map(photo => 
+        photo.albumId === albumId 
+          ? { ...photo, albumId: undefined }
+          : photo
+      ));
+
+      // Clear selected album if it was deleted
+      if (selectedAlbum === albumId) {
+        setSelectedAlbum(null);
+      }
+
+      alert('相册已删除');
+    } catch (error) {
+      console.error('Delete album error:', error);
+      alert('删除失败，请稍后再试');
+    }
+  };
+
+  const handleMovePhoto = async (photoId: string, newAlbumId: string) => {
+    if (!currentUser) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // TODO: 调用后端API移动作品
+      const response = await fetch(API_ENDPOINTS.updatePhoto(currentUser.username, photoId), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ albumId: newAlbumId || null }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Move photo failed');
+      }
+
+      const photo = photos.find(p => p.id === photoId);
+      const oldAlbumId = photo?.albumId;
+
+      // Update photo's albumId
+      setPhotos(photos.map(p => 
+        p.id === photoId 
+          ? { ...p, albumId: newAlbumId || undefined }
+          : p
+      ));
+
+      // Update album counts
+      setAlbums(albums.map(album => {
+        if (album.id === oldAlbumId) {
+          return { ...album, photoCount: album.photoCount - 1 };
+        }
+        if (album.id === newAlbumId) {
+          return { ...album, photoCount: album.photoCount + 1 };
+        }
+        return album;
+      }));
+
+      setShowMovePhotoModal(false);
+      setMovingPhoto(null);
+      alert('作品已移动');
+    } catch (error) {
+      console.error('Move photo error:', error);
+      alert('移动失败，请稍后再试');
+    }
+  };
+
+  const handleSetAlbumCover = async (albumId: string, photoUrl: string) => {
+    if (!currentUser) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // TODO: 调用后端API设置封面
+      const response = await fetch(API_ENDPOINTS.updateAlbum(currentUser.username, albumId), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ coverPhoto: photoUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Set cover failed');
+      }
+
+      // Update album cover in state
+      setAlbums(albums.map(album => 
+        album.id === albumId 
+          ? { ...album, coverPhoto: photoUrl }
+          : album
+      ));
+
+      alert('封面设置成功');
+    } catch (error) {
+      console.error('Set cover error:', error);
+      alert('设置失败，请稍后再试');
     }
   };
 
@@ -275,6 +429,7 @@ export default function PhotographerProfilePage() {
         lens: '',
         settings: '',
         takenAt: '',
+        albumId: '',
       });
       setUploadPreview(null);
 
@@ -517,6 +672,13 @@ export default function PhotographerProfilePage() {
             {isOwnProfile && (
               <>
                 <button
+                  onClick={() => setShowAlbumModal(true)}
+                  className="hover:text-stone-300 transition-colors"
+                  title="创建相册组织作品"
+                >
+                  创建相册
+                </button>
+                <button
                   onClick={() => setShowUploadModal(true)}
                   className="hover:text-stone-300 transition-colors"
                   title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20} 张作品 | ${currentUser?.userTier || 'FREE'} 等级`}
@@ -543,15 +705,88 @@ export default function PhotographerProfilePage() {
         </div>
       )}
 
+      {/* Album Filter Tabs */}
+      {albums.length > 0 && (
+        <div className="px-6 pt-32">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
+              <button
+                onClick={() => setSelectedAlbum(null)}
+                className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
+                  selectedAlbum === null
+                    ? 'bg-white text-stone-900'
+                    : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
+                }`}
+              >
+                全部作品 ({photos.length})
+              </button>
+              {albums.map((album) => (
+                <div key={album.id} className="relative group">
+                  <button
+                    onClick={() => setSelectedAlbum(album.id)}
+                    className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
+                      selectedAlbum === album.id
+                        ? 'bg-white text-stone-900'
+                        : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
+                    }`}
+                  >
+                    {album.name} ({album.photoCount})
+                  </button>
+                  {/* Album actions - show on hover for own profile */}
+                  {isOwnProfile && (
+                    <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingAlbum(album);
+                          setAlbumForm({ name: album.name, description: album.description || '' });
+                          setShowAlbumModal(true);
+                        }}
+                        className="bg-stone-700 hover:bg-stone-600 text-white p-1 rounded-full"
+                        title="编辑相册"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAlbum(album.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white p-1 rounded-full"
+                        title="删除相册"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Photo Grid - Masonry Layout */}
       <div className="px-6 pb-20 pt-32">
-        {photos.length === 0 ? (
-          <div className="text-center py-32">
-            <p className="text-stone-600 text-sm font-light">No works yet</p>
-          </div>
-        ) : (
-          <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {photos.map((photo) => (
+        {(() => {
+          // 过滤照片：根据选中的相册
+          const filteredPhotos = selectedAlbum
+            ? photos.filter(photo => photo.albumId === selectedAlbum)
+            : photos;
+
+          if (filteredPhotos.length === 0) {
+            return (
+              <div className="text-center py-32">
+                <p className="text-stone-600 text-sm font-light">
+                  {selectedAlbum ? '该相册暂无作品' : 'No works yet'}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+              {filteredPhotos.map((photo) => (
               <div
                 key={photo.id}
                 className="break-inside-avoid group cursor-pointer relative"
@@ -595,9 +830,10 @@ export default function PhotographerProfilePage() {
                   </button>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Lightbox Modal */}
@@ -687,6 +923,39 @@ export default function PhotographerProfilePage() {
                   </div>
                 )}
               </div>
+
+              {/* Photo Actions - only for own profile */}
+              {isOwnProfile && (
+                <div className="pt-4 border-t border-stone-800 space-y-2">
+                  {/* Move to album */}
+                  {albums.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setMovingPhoto(selectedPhoto);
+                        setShowMovePhotoModal(true);
+                      }}
+                      className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 py-2 px-4 rounded text-xs font-light transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                      </svg>
+                      移动到相册
+                    </button>
+                  )}
+                  {/* Set as album cover */}
+                  {selectedPhoto.albumId && (
+                    <button
+                      onClick={() => handleSetAlbumCover(selectedPhoto.albumId!, selectedPhoto.imageUrl)}
+                      className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 py-2 px-4 rounded text-xs font-light transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      设为相册封面
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -865,6 +1134,27 @@ export default function PhotographerProfilePage() {
                   />
                 </div>
 
+                {/* Album Selection */}
+                {albums.length > 0 && (
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      选择相册（可选）
+                    </label>
+                    <select
+                      value={uploadForm.albumId}
+                      onChange={(e) => setUploadForm({ ...uploadForm, albumId: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    >
+                      <option value="">不分类（默认）</option>
+                      {albums.map((album) => (
+                        <option key={album.id} value={album.id}>
+                          {album.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <div className="flex gap-3 pt-4">
                   <button
@@ -886,6 +1176,232 @@ export default function PhotographerProfilePage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Album Modal */}
+      {showAlbumModal && isOwnProfile && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-stone-900 rounded-lg max-w-md w-full">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-light text-white">{editingAlbum ? '编辑相册' : '创建相册'}</h2>
+                <button
+                  onClick={() => {
+                    setShowAlbumModal(false);
+                    setAlbumForm({ name: '', description: '' });
+                    setEditingAlbum(null);
+                  }}
+                  className="text-stone-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!albumForm.name.trim()) return;
+
+                  if (editingAlbum) {
+                    // 编辑相册
+                    const token = localStorage.getItem('auth_token');
+                    const response = await fetch(API_ENDPOINTS.updateAlbum(currentUser!.username, editingAlbum.id), {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({ 
+                        name: albumForm.name, 
+                        description: albumForm.description 
+                      }),
+                    });
+
+                    if (response.ok) {
+                      setAlbums(albums.map(album => 
+                        album.id === editingAlbum.id
+                          ? { ...album, name: albumForm.name, description: albumForm.description }
+                          : album
+                      ));
+                      alert('相册更新成功！');
+                    }
+                  } else {
+                    // 创建相册
+                    const newAlbum: Album = {
+                      id: `album-${Date.now()}`,
+                      name: albumForm.name,
+                      description: albumForm.description,
+                      photoCount: 0,
+                      createdAt: new Date().toISOString(),
+                    };
+                    setAlbums([...albums, newAlbum]);
+                    alert('相册创建成功！');
+                  }
+                  
+                  setShowAlbumModal(false);
+                  setAlbumForm({ name: '', description: '' });
+                  setEditingAlbum(null);
+                }}
+                className="space-y-6"
+              >
+                {/* Album Name */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    相册名称 *
+                  </label>
+                  <input
+                    type="text"
+                    value={albumForm.name}
+                    onChange={(e) => setAlbumForm({ ...albumForm, name: e.target.value })}
+                    required
+                    maxLength={30}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="例：京都的秋天、日常生活、人像摄影"
+                  />
+                </div>
+
+                {/* Album Description */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    相册描述（可选）
+                  </label>
+                  <textarea
+                    value={albumForm.description}
+                    onChange={(e) => setAlbumForm({ ...albumForm, description: e.target.value })}
+                    rows={3}
+                    maxLength={200}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors resize-none"
+                    placeholder="简要描述这个相册的主题或故事..."
+                  />
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={!albumForm.name.trim()}
+                    className="flex-1 bg-white text-black py-3 rounded font-light text-sm hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editingAlbum ? '保存更改' : '创建相册'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAlbumModal(false);
+                      setAlbumForm({ name: '', description: '' });
+                      setEditingAlbum(null);
+                    }}
+                    className="px-6 bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move Photo to Album Modal */}
+      {showMovePhotoModal && movingPhoto && isOwnProfile && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-stone-900 rounded-lg max-w-md w-full">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-light text-white">移动到相册</h2>
+                <button
+                  onClick={() => {
+                    setShowMovePhotoModal(false);
+                    setMovingPhoto(null);
+                  }}
+                  className="text-stone-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Current album info */}
+              <div className="mb-6 p-4 bg-stone-800 rounded">
+                <p className="text-xs text-stone-400 mb-1">当前所在相册：</p>
+                <p className="text-sm text-white font-light">
+                  {movingPhoto.albumId 
+                    ? albums.find(a => a.id === movingPhoto.albumId)?.name || '未知相册'
+                    : '未分类'
+                  }
+                </p>
+              </div>
+
+              {/* Album list */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                <button
+                  onClick={() => handleMovePhoto(movingPhoto.id, '')}
+                  className={`w-full text-left px-4 py-3 rounded transition-colors ${
+                    !movingPhoto.albumId
+                      ? 'bg-stone-700 text-white'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-light">未分类</p>
+                      <p className="text-xs text-stone-500">移除相册分类</p>
+                    </div>
+                  </div>
+                </button>
+
+                {albums.map((album) => (
+                  <button
+                    key={album.id}
+                    onClick={() => handleMovePhoto(movingPhoto.id, album.id)}
+                    disabled={movingPhoto.albumId === album.id}
+                    className={`w-full text-left px-4 py-3 rounded transition-colors ${
+                      movingPhoto.albumId === album.id
+                        ? 'bg-stone-700 text-white cursor-not-allowed'
+                        : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-light">{album.name}</p>
+                        <p className="text-xs text-stone-500">{album.photoCount} 张作品</p>
+                      </div>
+                      {movingPhoto.albumId === album.id && (
+                        <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Cancel button */}
+              <div className="mt-6">
+                <button
+                  onClick={() => {
+                    setShowMovePhotoModal(false);
+                    setMovingPhoto(null);
+                  }}
+                  className="w-full bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
+                >
+                  取消
+                </button>
+              </div>
             </div>
           </div>
         </div>
