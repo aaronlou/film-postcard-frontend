@@ -304,7 +304,20 @@ export default function PhotographerProfilePage() {
       {/* Minimal Header - Fixed */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-sm border-b border-stone-900">
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
+            {/* Back to Home Button */}
+            <a
+              href="/"
+              className="text-stone-400 hover:text-stone-200 transition-colors flex items-center gap-2"
+              title="返回创作主页"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span className="text-xs font-light">主页</span>
+            </a>
+
+            <div className="flex items-center gap-4">
             {profile.avatar ? (
               <img
                 src={profile.avatar}
@@ -317,8 +330,9 @@ export default function PhotographerProfilePage() {
               </div>
             )}
             <div>
-              <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
-              <p className="text-xs text-stone-500">@{profile.username}</p>
+                <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
+                <p className="text-xs text-stone-500">@{profile.username}</p>
+              </div>
             </div>
           </div>
           
@@ -359,7 +373,7 @@ export default function PhotographerProfilePage() {
       )}
 
       {/* Photo Grid - Masonry Layout */}
-      <div className="px-6 pb-20 pt-8">
+      <div className="px-6 pb-20 pt-32">
         {photos.length === 0 ? (
           <div className="text-center py-32">
             <p className="text-stone-600 text-sm font-light">No works yet</p>
