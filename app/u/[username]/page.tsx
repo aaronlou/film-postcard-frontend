@@ -46,14 +46,14 @@ export default function PhotographerProfilePage() {
             username: 'demo',
             displayName: 'Alex Chen',
             bio: 'Street photographer capturing moments of everyday beauty. Based in Tokyo & Shanghai.',
-            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
             photoCount: 12,
             instagram: 'https://instagram.com/alexchen',
           });
           setPhotos([
             {
               id: '1',
-              imageUrl: 'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba',
+              imageUrl: 'https://picsum.photos/800/1200?random=1',
               title: 'Golden Hour',
               location: 'Tokyo, Japan',
               camera: 'Leica M11',
@@ -63,7 +63,7 @@ export default function PhotographerProfilePage() {
             },
             {
               id: '2',
-              imageUrl: 'https://images.unsplash.com/photo-1682687221038-404cb8830901',
+              imageUrl: 'https://picsum.photos/800/600?random=2',
               title: 'Urban Reflections',
               location: 'Shanghai, China',
               camera: 'Fujifilm X-T5',
@@ -72,28 +72,28 @@ export default function PhotographerProfilePage() {
             },
             {
               id: '3',
-              imageUrl: 'https://images.unsplash.com/photo-1682687220063-4742bd7fd538',
+              imageUrl: 'https://picsum.photos/600/900?random=3',
               title: 'Morning Light',
               location: 'Kyoto, Japan',
               createdAt: '2025-11-13T08:20:00Z',
             },
             {
               id: '4',
-              imageUrl: 'https://images.unsplash.com/photo-1682687220798-2c5e3f04c0e1',
+              imageUrl: 'https://picsum.photos/800/1000?random=4',
               title: 'Street Stories',
               location: 'Hong Kong',
               createdAt: '2025-11-12T18:45:00Z',
             },
             {
               id: '5',
-              imageUrl: 'https://images.unsplash.com/photo-1682687221080-5cb261c645cb',
+              imageUrl: 'https://picsum.photos/700/1100?random=5',
               title: 'Silent Moments',
               location: 'Osaka, Japan',
               createdAt: '2025-11-11T12:10:00Z',
             },
             {
               id: '6',
-              imageUrl: 'https://images.unsplash.com/photo-1682687220866-c856f566f1bd',
+              imageUrl: 'https://picsum.photos/800/800?random=6',
               title: 'City Lights',
               location: 'Seoul, Korea',
               createdAt: '2025-11-10T20:30:00Z',
