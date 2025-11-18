@@ -26,11 +26,12 @@ export default function Home() {
     quantity: 1,
   });
   const postcardRef = useRef<HTMLDivElement>(null);
+  const postcardInnerRef = useRef<HTMLDivElement>(null);
   const bookmarkRef = useRef<HTMLDivElement>(null);
   const polaroidRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<HTMLDivElement>(null);
 
-  const templateRef = currentTemplate === 'postcard' ? postcardRef :
+  const templateRef = currentTemplate === 'postcard' ? postcardInnerRef :
     currentTemplate === 'bookmark' ? bookmarkRef :
       currentTemplate === 'polaroid' ? polaroidRef : greetingRef;
 
@@ -88,9 +89,7 @@ export default function Home() {
     try {
       const canvas = await html2canvas(templateRef.current, {
         scale: 2,
-        backgroundColor: currentTemplate === 'postcard' ? '#f5f0e8' :
-          currentTemplate === 'bookmark' ? '#fef3e2' :
-            currentTemplate === 'polaroid' ? '#ffffff' : '#faf8f5',
+        backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
         allowTaint: true,
@@ -309,7 +308,7 @@ export default function Home() {
                   className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl relative"
                   style={{ width: '480px' }}
                 >
-                  <div className="bg-white p-6 rounded-2xl shadow-inner relative">
+                  <div ref={postcardInnerRef} className="bg-white p-6 rounded-2xl shadow-inner relative">
                     {image ? (
                       <div className="relative aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
                         {/* Subtle film perforations on left */}
