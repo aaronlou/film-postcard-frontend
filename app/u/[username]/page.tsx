@@ -399,6 +399,10 @@ export default function PhotographerProfilePage() {
         albumId: uploadForm.albumId || undefined, // Include album selection
       };
 
+      // Debug: Log what we're sending
+      console.log('📤 Uploading photo with data:', photoData);
+      console.log('📁 Selected albumId from form:', uploadForm.albumId);
+
       // Save photo metadata to backend
       const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
         method: 'POST',
@@ -415,6 +419,10 @@ export default function PhotographerProfilePage() {
       }
 
       const savedPhoto = await saveRes.json();
+
+      // Debug: Log what backend returned
+      console.log('✅ Backend returned photo:', savedPhoto);
+      console.log('📁 Photo albumId from backend:', savedPhoto.albumId);
 
       // Add to local state
       setPhotos([savedPhoto, ...photos]);
@@ -1160,7 +1168,10 @@ export default function PhotographerProfilePage() {
                     </label>
                     <select
                       value={uploadForm.albumId}
-                      onChange={(e) => setUploadForm({ ...uploadForm, albumId: e.target.value })}
+                      onChange={(e) => {
+                        console.log('📋 Album selected:', e.target.value);
+                        setUploadForm({ ...uploadForm, albumId: e.target.value });
+                      }}
                       className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
                     >
                       <option value="">不分类（默认）</option>
