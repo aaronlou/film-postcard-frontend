@@ -43,7 +43,8 @@ interface PhotographerProfile {
 
 export default function PhotographerProfilePage() {
   const params = useParams();
-  const username = params.username as string;
+  // Decode username to handle special characters and spaces
+  const username = decodeURIComponent(params.username as string);
   const { user: currentUser, refreshUser } = useAuth();
 
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
@@ -91,13 +92,18 @@ export default function PhotographerProfilePage() {
   // Debug: Log current user data to check tier
   useEffect(() => {
     console.log('🔍 Profile Page Debug:');
+    console.log('  - URL params.username:', params.username);
+    console.log('  - Decoded username:', username);
     console.log('  - Current User:', currentUser);
-    console.log('  - Profile Username:', username);
+    console.log('  - Current User username:', currentUser?.username);
     console.log('  - Is Own Profile:', isOwnProfile);
     if (isOwnProfile && currentUser) {
       console.log('  - User Tier:', currentUser.userTier);
     }
-  }, [currentUser, username, isOwnProfile]);
+    if (currentUser && !isOwnProfile) {
+      console.log('  ⚠️  Username mismatch: "' + currentUser.username + '" !== "' + username + '"');
+    }
+  }, [currentUser, username, isOwnProfile, params.username]);
 
   const handleDeletePhoto = async (photoId: string) => {
     if (!currentUser || !confirm('确定要删除这张作品吗？此操作不可撤销。')) return;
