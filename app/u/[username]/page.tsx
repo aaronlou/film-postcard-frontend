@@ -426,6 +426,18 @@ export default function PhotographerProfilePage() {
     e.preventDefault();
     if (!uploadForm.image || !currentUser) return;
 
+    // === CRITICAL DEBUG LOGGING ===
+    console.log('='.repeat(60));
+    console.log('🚀 [UPLOAD] Starting photo upload...');
+    console.log('📋 [UPLOAD] Full uploadForm state:', JSON.stringify(uploadForm, null, 2));
+    console.log('📁 [UPLOAD] albumId value:', uploadForm.albumId);
+    console.log('📁 [UPLOAD] albumId type:', typeof uploadForm.albumId);
+    console.log('📁 [UPLOAD] albumId length:', uploadForm.albumId?.length || 0);
+    console.log('📁 [UPLOAD] Is empty string?', uploadForm.albumId === '');
+    console.log('📚 [UPLOAD] Available albums:', albums.map(a => ({ id: a.id, name: a.name })));
+    console.log('='.repeat(60));
+    // === END DEBUG ===
+
     // Check photo limit from user's tier
     const photoLimit = currentUser.photoLimit || 20; // Default FREE tier: 20 photos
     if (photos.length >= photoLimit) {
@@ -470,12 +482,13 @@ export default function PhotographerProfilePage() {
         lens: uploadForm.lens || undefined,
         settings: uploadForm.settings || undefined,
         takenAt: uploadForm.takenAt || undefined,
-        albumId: uploadForm.albumId || undefined, // Include album selection
+        albumId: uploadForm.albumId ? uploadForm.albumId : null, // Explicit null for no album
       };
 
       // Debug: Log what we're sending
       console.log('📤 Uploading photo with data:', photoData);
       console.log('📁 Selected albumId from form:', uploadForm.albumId);
+      console.log('📁 AlbumId being sent (after processing):', photoData.albumId);
 
       // Save photo metadata to backend
       const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
