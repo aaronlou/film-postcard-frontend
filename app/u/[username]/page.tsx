@@ -857,18 +857,18 @@ export default function PhotographerProfilePage() {
 
       {/* Bio Section */}
       {(profile.bio || profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
-        <div className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4 sm:px-6">
+        <div className="pt-24 sm:pt-28 md:pt-32 pb-6 sm:pb-8 md:pb-10 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
             {/* Bio Text */}
             {profile.bio && (
-              <p className="text-stone-400 text-center text-sm sm:text-base font-light leading-relaxed tracking-wide mb-8 sm:mb-12">
+              <p className="text-stone-400 text-center text-sm sm:text-base font-light leading-relaxed tracking-wide mb-5 sm:mb-6 md:mb-8">
                 {profile.bio}
               </p>
             )}
             {/* Metadata Grid */}
             {(profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
-              <div className="border-t border-b border-stone-900/30 py-6 sm:py-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
+              <div className="border-t border-b border-stone-900/30 py-4 sm:py-5 md:py-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 text-center">
                   {profile.location && (
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-4 h-4 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -924,9 +924,9 @@ export default function PhotographerProfilePage() {
 
       {/* Album Filter Tabs */}
       {albums.length > 0 && (
-        <div className="px-4 sm:px-6 pt-24 sm:pt-32">
+        <div className="px-4 sm:px-6 pt-5 sm:pt-6 md:pt-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide">
               <button
                 onClick={() => setSelectedAlbum(null)}
                 className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
@@ -985,7 +985,7 @@ export default function PhotographerProfilePage() {
 
       {/* Photo Grid - Masonry Layout */}
       {photos.length > 0 && (
-        <div className="px-4 sm:px-6 lg:px-8 pb-16 sm:pb-24 pt-24 sm:pt-32">
+        <div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 md:pb-24 pt-6 sm:pt-8 md:pt-10">
           {(() => {
             // 过滤照片：根据选中的相册
             const filteredPhotos = selectedAlbum
