@@ -614,6 +614,7 @@ export default function PhotographerProfilePage() {
             </a>
 
             <div className="flex items-center gap-4">
+            <div className="relative">
             {profile.avatar ? (
               <div className="relative group">
                 <img
@@ -679,6 +680,13 @@ export default function PhotographerProfilePage() {
                 )}
               </div>
             )}
+              {/* Tier Badge - Only for own profile */}
+              {isOwnProfile && currentUser?.userTier && (
+                <div className="absolute -bottom-1 -right-1 text-[9px] font-light text-stone-500 tracking-wider">
+                  {currentUser.userTier}
+                </div>
+              )}
+            </div>
             <div>
                 <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
                 <p className="text-xs text-stone-500">@{profile.username}</p>
@@ -792,7 +800,7 @@ export default function PhotographerProfilePage() {
 
       {/* Photo Grid - Masonry Layout */}
       {photos.length > 0 && (
-        <div className="px-6 pb-20 pt-32">
+        <div className="px-8 pb-24 pt-32">
           {(() => {
             // 过滤照片：根据选中的相册
             const filteredPhotos = selectedAlbum
@@ -810,26 +818,26 @@ export default function PhotographerProfilePage() {
             }
 
           return (
-            <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
               {filteredPhotos.map((photo) => (
               <div
                 key={photo.id}
-                className="break-inside-avoid group cursor-pointer relative"
+                className="break-inside-avoid group cursor-pointer relative mb-2"
               >
-                <div className="relative overflow-hidden bg-stone-900" onClick={() => setSelectedPhoto(photo)}>
+                <div className="relative overflow-hidden bg-black border border-stone-900/50 shadow-2xl" onClick={() => setSelectedPhoto(photo)}>
                   <img
                     src={photo.imageUrl}
                     alt={photo.title || 'Photography work'}
-                    className="w-full h-auto object-cover transition-all duration-700 group-hover:scale-105 group-hover:opacity-90"
+                    className="w-full h-auto object-cover transition-all duration-1000 ease-out group-hover:scale-[1.02] group-hover:opacity-95"
                   />
                   {/* Subtle overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out">
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
                       {photo.title && (
-                        <p className="text-white text-sm font-light mb-1">{photo.title}</p>
+                        <p className="text-white text-sm font-light tracking-wide mb-1.5">{photo.title}</p>
                       )}
                       {photo.location && (
-                        <p className="text-stone-400 text-xs font-light">{photo.location}</p>
+                        <p className="text-stone-400 text-xs font-light tracking-wider">{photo.location}</p>
                       )}
                     </div>
                   </div>
@@ -842,7 +850,7 @@ export default function PhotographerProfilePage() {
                       handleDeletePhoto(photo.id);
                     }}
                     disabled={deletingPhotoId === photo.id}
-                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 z-10"
+                    className="absolute top-3 right-3 bg-red-600/70 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 disabled:opacity-50 z-10"
                     title="删除作品"
                   >
                     {deletingPhotoId === photo.id ? (
