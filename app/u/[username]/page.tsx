@@ -662,29 +662,30 @@ export default function PhotographerProfilePage() {
     <div className="min-h-screen bg-black text-white">
       {/* Minimal Header - Fixed */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-sm border-b border-stone-900">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            {/* Back to Home Button */}
-            <a
-              href="/"
-              className="text-stone-400 hover:text-stone-200 transition-colors flex items-center gap-2"
-              title="返回创作主页"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span className="text-xs font-light">主页</span>
-            </a>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          {/* Desktop layout */}
+          <div className="hidden sm:flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <a
+                href="/"
+                className="text-stone-400 hover:text-stone-200 transition-colors flex items-center gap-2"
+                title="返回创作主页"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="text-xs font-light">主页</span>
+              </a>
 
-            <div className="flex items-center gap-4">
-            <div className="relative">
-            {profile.avatar ? (
-              <div className="relative group">
-                <img
-                  src={profile.avatar}
-                  alt={profile.displayName}
-                  className="w-10 h-10 rounded-full object-cover opacity-90"
-                />
+              <div className="flex items-center gap-4">
+              <div className="relative">
+              {profile.avatar ? (
+                <div className="relative group">
+                  <img
+                    src={profile.avatar}
+                    alt={profile.displayName}
+                    className="w-10 h-10 rounded-full object-cover opacity-90"
+                  />
                 {isOwnProfile && (
                   <>
                     <label
@@ -756,67 +757,118 @@ export default function PhotographerProfilePage() {
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-6 text-xs text-stone-500">
-            <span>{profile.photoCount} works</span>
-            {profile.xiaohongshu && (
-              <a href={profile.xiaohongshu} target="_blank" rel="noopener noreferrer" className="hover:text-stone-300 transition-colors">
-                小红书
+            
+            <div className="flex items-center gap-4 sm:gap-6 text-xs text-stone-500">
+              <span className="hidden sm:inline">{profile.photoCount} works</span>
+              {profile.xiaohongshu && (
+                <a href={profile.xiaohongshu} target="_blank" rel="noopener noreferrer" className="hidden sm:inline hover:text-stone-300 transition-colors">
+                  小红书
+                </a>
+              )}
+              {isOwnProfile && (
+                <>
+                  <button
+                    onClick={() => setShowAlbumModal(true)}
+                    className="hidden sm:inline hover:text-stone-300 transition-colors"
+                    title="创建相册组织作品"
+                  >
+                    创建相册
+                  </button>
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="hover:text-stone-300 transition-colors"
+                    title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20} 张作品 | ${currentUser?.userTier || 'FREE'} 等级`}
+                  >
+                    上传作品
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsForm({
+                        displayName: profile.displayName,
+                        bio: profile.bio || '',
+                        location: profile.location || '',
+                        xiaohongshu: profile.xiaohongshu || '',
+                        favoriteCamera: profile.favoriteCamera || '',
+                        favoriteLens: profile.favoriteLens || '',
+                        favoritePhotographer: profile.favoritePhotographer || '',
+                      });
+                      setShowSettingsModal(true);
+                    }}
+                    className="hidden sm:inline hover:text-stone-300 transition-colors"
+                  >
+                    设置
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile layout */}
+          <div className="sm:hidden">
+            <div className="flex items-center justify-between mb-3">
+              <a
+                href="/"
+                className="text-stone-400 hover:text-stone-200 transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="text-xs font-light">主页</span>
               </a>
-            )}
-            {isOwnProfile && (
-              <>
-                <button
-                  onClick={() => setShowAlbumModal(true)}
-                  className="hover:text-stone-300 transition-colors"
-                  title="创建相册组织作品"
-                >
-                  创建相册
-                </button>
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="hover:text-stone-300 transition-colors"
-                  title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20} 张作品 | ${currentUser?.userTier || 'FREE'} 等级`}
-                >
-                  上传作品
-                </button>
-                <button
-                  onClick={() => {
-                    setSettingsForm({
-                      displayName: profile.displayName,
-                      bio: profile.bio || '',
-                      location: profile.location || '',
-                      xiaohongshu: profile.xiaohongshu || '',
-                      favoriteCamera: profile.favoriteCamera || '',
-                      favoriteLens: profile.favoriteLens || '',
-                      favoritePhotographer: profile.favoritePhotographer || '',
-                    });
-                    setShowSettingsModal(true);
-                  }}
-                  className="hover:text-stone-300 transition-colors"
-                >
-                  设置
-                </button>
-              </>
-            )}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-stone-500">{profile.photoCount} works</span>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="text-xs text-stone-500 hover:text-stone-300 transition-colors"
+                  >
+                    上传
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+              {profile.avatar ? (
+                <img
+                  src={profile.avatar}
+                  alt={profile.displayName}
+                  className="w-12 h-12 rounded-full object-cover opacity-90"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
+                  {profile.displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {isOwnProfile && currentUser?.userTier && (
+                <div className="absolute -bottom-1 -right-1 text-[9px] font-light text-stone-500 tracking-wider">
+                  {currentUser.userTier}
+                </div>
+              )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-light tracking-wide truncate">{profile.displayName}</h1>
+                <p className="text-xs text-stone-500 truncate">@{profile.username}</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Bio Section */}
       {(profile.bio || profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
-        <div className="pt-40 pb-24 px-6">
+        <div className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
             {/* Bio Text */}
             {profile.bio && (
-              <p className="text-stone-400 text-center text-base font-light leading-relaxed tracking-wide mb-12">
+              <p className="text-stone-400 text-center text-sm sm:text-base font-light leading-relaxed tracking-wide mb-8 sm:mb-12">
                 {profile.bio}
               </p>
             )}
             {/* Metadata Grid */}
             {(profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
-              <div className="border-t border-b border-stone-900/30 py-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              <div className="border-t border-b border-stone-900/30 py-6 sm:py-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
                   {profile.location && (
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-4 h-4 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -872,9 +924,9 @@ export default function PhotographerProfilePage() {
 
       {/* Album Filter Tabs */}
       {albums.length > 0 && (
-        <div className="px-6 pt-32">
+        <div className="px-4 sm:px-6 pt-24 sm:pt-32">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-4 scrollbar-hide">
               <button
                 onClick={() => setSelectedAlbum(null)}
                 className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
@@ -933,7 +985,7 @@ export default function PhotographerProfilePage() {
 
       {/* Photo Grid - Masonry Layout */}
       {photos.length > 0 && (
-        <div className="px-8 pb-24 pt-32">
+        <div className="px-4 sm:px-6 lg:px-8 pb-16 sm:pb-24 pt-24 sm:pt-32">
           {(() => {
             // 过滤照片：根据选中的相册
             const filteredPhotos = selectedAlbum
@@ -951,7 +1003,7 @@ export default function PhotographerProfilePage() {
             }
 
           return (
-            <div className="max-w-7xl mx-auto columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+            <div className="max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
               {filteredPhotos.map((photo) => (
               <div
                 key={photo.id}
