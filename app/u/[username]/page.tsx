@@ -34,8 +34,11 @@ interface PhotographerProfile {
   bio?: string;
   avatar?: string;
   photoCount: number;
-  website?: string;
   xiaohongshu?: string;
+  location?: string;
+  favoriteCamera?: string;
+  favoriteLens?: string;
+  favoritePhotographer?: string;
 }
 
 export default function PhotographerProfilePage() {
@@ -71,6 +74,17 @@ export default function PhotographerProfilePage() {
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
   const [showMovePhotoModal, setShowMovePhotoModal] = useState(false);
   const [movingPhoto, setMovingPhoto] = useState<Photo | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    displayName: '',
+    bio: '',
+    location: '',
+    xiaohongshu: '',
+    favoriteCamera: '',
+    favoriteLens: '',
+    favoritePhotographer: '',
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const isOwnProfile = currentUser && currentUser.username === username;
 
@@ -250,6 +264,55 @@ export default function PhotographerProfilePage() {
     } catch (error) {
       console.error('Set cover error:', error);
       alert('设置失败，请稍后再试');
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    setSavingSettings(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(API_ENDPOINTS.updateUserProfile(currentUser.username), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(settingsForm),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Update failed');
+      }
+
+      const updatedProfile = await response.json();
+      
+      // Update local profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        displayName: updatedProfile.displayName || settingsForm.displayName,
+        bio: updatedProfile.bio || settingsForm.bio,
+        location: updatedProfile.location || settingsForm.location,
+        xiaohongshu: updatedProfile.xiaohongshu || settingsForm.xiaohongshu,
+        favoriteCamera: updatedProfile.favoriteCamera || settingsForm.favoriteCamera,
+        favoriteLens: updatedProfile.favoriteLens || settingsForm.favoriteLens,
+        favoritePhotographer: updatedProfile.favoritePhotographer || settingsForm.favoritePhotographer,
+      } : null);
+
+      // Refresh auth context to update globally
+      await refreshUser();
+
+      setShowSettingsModal(false);
+      alert('个人资料更新成功！');
+    } catch (error) {
+      console.error('Update profile error:', error);
+      const errorMessage = error instanceof Error ? error.message : '更新失败，请稍后再试';
+      alert(errorMessage);
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -717,9 +780,23 @@ export default function PhotographerProfilePage() {
                 >
                   上传作品
                 </button>
-                <a href="#" className="hover:text-stone-300 transition-colors">
+                <button
+                  onClick={() => {
+                    setSettingsForm({
+                      displayName: profile.displayName,
+                      bio: profile.bio || '',
+                      location: profile.location || '',
+                      xiaohongshu: profile.xiaohongshu || '',
+                      favoriteCamera: profile.favoriteCamera || '',
+                      favoriteLens: profile.favoriteLens || '',
+                      favoritePhotographer: profile.favoritePhotographer || '',
+                    });
+                    setShowSettingsModal(true);
+                  }}
+                  className="hover:text-stone-300 transition-colors"
+                >
                   设置
-                </a>
+                </button>
               </>
             )}
           </div>
@@ -727,12 +804,68 @@ export default function PhotographerProfilePage() {
       </header>
 
       {/* Bio Section */}
-      {profile.bio && (
-        <div className="pt-32 pb-16 px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <p className="text-stone-400 text-base font-light leading-relaxed tracking-wide">
-              {profile.bio}
-            </p>
+      {(profile.bio || profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
+        <div className="pt-40 pb-24 px-6">
+          <div className="max-w-4xl mx-auto">
+            {/* Bio Text */}
+            {profile.bio && (
+              <p className="text-stone-400 text-center text-base font-light leading-relaxed tracking-wide mb-12">
+                {profile.bio}
+              </p>
+            )}
+            {/* Metadata Grid */}
+            {(profile.location || profile.favoriteCamera || profile.favoriteLens || profile.favoritePhotographer) && (
+              <div className="border-t border-b border-stone-900/30 py-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                  {profile.location && (
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-4 h-4 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-600 mb-1">Based in</p>
+                        <p className="text-xs text-stone-400 font-light">{profile.location}</p>
+                      </div>
+                    </div>
+                  )}
+                  {profile.favoriteCamera && (
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-4 h-4 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-600 mb-1">Camera</p>
+                        <p className="text-xs text-stone-400 font-light">{profile.favoriteCamera}</p>
+                      </div>
+                    </div>
+                  )}
+                  {profile.favoriteLens && (
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-4 h-4 text-stone-700" fill="currentColor" viewBox="0 0 1024 1024">
+                        <path d="M895.976001 91.898256c0-16.63896-12.7992-30.206112-28.734204-30.270108h-35.965752c-25.534404 0-49.404912 13.11918-63.868008 35.069808l-26.622336 39.933505a23.230548 23.230548 0 0 1-20.670708 10.623336 23.422536 23.422536 0 0 1-19.454784-12.863196l-34.109868-65.275921A126.008124 126.008124 0 0 0 555.51728 0H468.738704a125.944128 125.944128 0 0 0-110.777077 68.987688l-34.365852 65.595901a23.422536 23.422536 0 0 1-19.51878 12.7992 22.974564 22.974564 0 0 1-20.670708-10.55934l-26.750328-40.253485A77.11518 77.11518 0 0 0 192.659959 61.500156H156.822199A29.566152 29.566152 0 0 0 128.023999 91.770264v208.498969c0.127992 0.767952 2.431848 18.23886 11.83926 35.83776 10.111368 18.622836 24.382476 30.590088 41.853384 35.325792v518.687582c0 27.262296 16.95894 50.428848 40.31748 58.428349l7.295544 34.941816c4.863696 23.422536 24.894444 40.445472 47.67702 40.445472h469.92263a49.724892 49.724892 0 0 0 47.67702-40.445472l7.167552-34.87782a61.180176 61.180176 0 0 0 40.31748-58.492345V370.728829c36.47772-12.991188 52.47672-65.083932 53.372664-68.47572 0.255984-1.215924 0.447972-71.35554 0.511968-210.354853z m-690.06887 36.605713c10.175364 0 14.463096 1.663896 24.254484 8.127492 9.791388 6.527592 11.51928 13.631148 21.11868 27.326292l28.926192 34.045872c16.63896 14.143116 41.661396 12.607212 59.83626 0a40.765452 40.765452 0 0 0 12.607212-13.695144l36.861697-76.795201c16.382976-30.270108 47.997-49.084932 82.362852-49.148928h77.627148c34.301856 0 65.91588 18.814824 82.362852 49.020936l49.084933 80.506969c20.286732 19.966752 35.83776 15.487032 49.788888 16.126992 11.583276-4.47972 28.350228-17.91888 36.413724-29.43816l19.1988-26.55834c9.407412-13.631148 13.43916-12.415224 23.614524-14.143116a28.414224 28.414224 0 0 1 15.807012 2.751828c5.695644 3.327792 5.695644 2.751828 6.71958 6.783576l-1.023936 138.743328-638.040122-5.11968c-0.383976-85.75464-0.383976-130.295857 0-133.623648 0.447972-4.991688 2.303856-14.911068 12.47922-14.911068zM661.750641 399.975002v80.63496h-47.485033V399.975002h47.485033z m-126.520093 0v80.63496h-47.485032V399.975002h47.485032z m-124.7922 0v80.63496H362.889319V399.975002h47.485033z m-120.568465 0v80.63496h-47.485032V399.975002h47.485032z m493.409162 0v80.63496h-47.485032V399.975002h47.485032z m-121.528404 426.085369v80.634961h-47.485033v-80.634961h47.485033z m-126.520093 0v80.634961h-47.485032v-80.634961h47.485032z m-124.7922 0v80.634961H362.889319v-80.634961h47.485033z m-120.568465 0v80.634961h-15.487032a31.998 31.998 0 0 1-31.998-31.998001v-48.63696h47.485032z m496.416974 0v48.63696a31.998 31.998 0 0 1-31.998 31.998001h-15.487032v-80.634961h47.485032zM243.216799 524.255234h541.726142v254.512093H243.216799V524.255234z m484.96169 449.315918H310.348603c-10.23936 0-14.847072-6.143616-18.110868-12.223236a129.399913 129.399913 0 0 1-6.591588-14.847072l465.890882-0.063996a49.468908 49.468908 0 0 1-4.607712 14.911068c-3.1998 6.335604-6.911568 12.223236-18.814824 12.223236z m73.723392-626.904819l-583.259546-1.343916c-10.23936 0-14.71908-6.207612-18.046872-12.287232a129.399913 129.399913 0 0 1-6.655584-14.847072l631.384538 1.27992a49.468908 49.468908 0 0 1-4.607712 14.911068c-3.1998 6.3996-6.911568 12.287232-18.814824 12.287232z" />
+                      </svg>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-600 mb-1">Lens</p>
+                        <p className="text-xs text-stone-400 font-light">{profile.favoriteLens}</p>
+                      </div>
+                    </div>
+                  )}
+                  {profile.favoritePhotographer && (
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-4 h-4 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-600 mb-1">Inspired by</p>
+                        <p className="text-xs text-stone-400 font-light">{profile.favoritePhotographer}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1459,6 +1592,153 @@ export default function PhotographerProfilePage() {
                   取消
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && isOwnProfile && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-stone-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-light text-white">编辑个人资料</h2>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="text-stone-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                {/* Display Name */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    显示名称 *
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsForm.displayName}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, displayName: e.target.value })}
+                    required
+                    maxLength={50}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="Alex Chen"
+                  />
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    个人简介
+                  </label>
+                  <textarea
+                    value={settingsForm.bio}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, bio: e.target.value })}
+                    rows={4}
+                    maxLength={200}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors resize-none"
+                    placeholder="Street photographer capturing moments of everyday beauty..."
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    所在城市
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsForm.location}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, location: e.target.value })}
+                    maxLength={50}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="Tokyo, Shanghai, New York"
+                  />
+                </div>
+
+                {/* Favorite Camera */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      最喜欢的相机
+                    </label>
+                    <input
+                      type="text"
+                      value={settingsForm.favoriteCamera}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, favoriteCamera: e.target.value })}
+                      maxLength={50}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      placeholder="Leica M11, Fujifilm X-T5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                      最喜欢的镜头
+                    </label>
+                    <input
+                      type="text"
+                      value={settingsForm.favoriteLens}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, favoriteLens: e.target.value })}
+                      maxLength={50}
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      placeholder="Summilux 50mm f/1.4"
+                    />
+                  </div>
+                </div>
+
+                {/* Favorite Photographer */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    最喜欢的摄影师
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsForm.favoritePhotographer}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, favoritePhotographer: e.target.value })}
+                    maxLength={100}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="Henri Cartier-Bresson, Daido Moriyama"
+                  />
+                </div>
+
+                {/* Xiaohongshu */}
+                <div>
+                  <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
+                    小红书
+                  </label>
+                  <input
+                    type="url"
+                    value={settingsForm.xiaohongshu}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, xiaohongshu: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    placeholder="https://www.xiaohongshu.com/user/..."
+                  />
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={savingSettings || !settingsForm.displayName.trim()}
+                    className="flex-1 bg-white text-black py-3 rounded font-light text-sm hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingSettings ? '保存中...' : '保存更改'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className="px-6 bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
