@@ -45,7 +45,7 @@ export default function PhotographerProfilePage() {
   const params = useParams();
   const username = params.username as string;
   const { user: currentUser, refreshUser } = useAuth();
-  
+
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -123,7 +123,7 @@ export default function PhotographerProfilePage() {
 
       // Remove from local state
       setPhotos(photos.filter(p => p.id !== photoId));
-      
+
       // Update profile photo count
       setProfile(prev => prev ? {
         ...prev,
@@ -132,8 +132,8 @@ export default function PhotographerProfilePage() {
 
       // Update album photo count if photo was in an album
       if (deletedPhoto?.albumId) {
-        setAlbums(albums.map(album => 
-          album.id === deletedPhoto.albumId 
+        setAlbums(albums.map(album =>
+          album.id === deletedPhoto.albumId
             ? { ...album, photoCount: album.photoCount - 1 }
             : album
         ));
@@ -174,10 +174,10 @@ export default function PhotographerProfilePage() {
 
       // Remove album from state
       setAlbums(albums.filter(a => a.id !== albumId));
-      
+
       // Clear albumId from photos in this album
-      setPhotos(photos.map(photo => 
-        photo.albumId === albumId 
+      setPhotos(photos.map(photo =>
+        photo.albumId === albumId
           ? { ...photo, albumId: undefined }
           : photo
       ));
@@ -199,7 +199,7 @@ export default function PhotographerProfilePage() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      
+
       // TODO: 调用后端API移动作品
       const response = await fetch(API_ENDPOINTS.updatePhoto(currentUser.username, photoId), {
         method: 'PATCH',
@@ -218,8 +218,8 @@ export default function PhotographerProfilePage() {
       const oldAlbumId = photo?.albumId;
 
       // Update photo's albumId
-      setPhotos(photos.map(p => 
-        p.id === photoId 
+      setPhotos(photos.map(p =>
+        p.id === photoId
           ? { ...p, albumId: newAlbumId || undefined }
           : p
       ));
@@ -249,7 +249,7 @@ export default function PhotographerProfilePage() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      
+
       // TODO: 调用后端API设置封面
       const response = await fetch(API_ENDPOINTS.updateAlbum(currentUser.username, albumId), {
         method: 'PATCH',
@@ -265,8 +265,8 @@ export default function PhotographerProfilePage() {
       }
 
       // Update album cover in state
-      setAlbums(albums.map(album => 
-        album.id === albumId 
+      setAlbums(albums.map(album =>
+        album.id === albumId
           ? { ...album, coverPhoto: photoUrl }
           : album
       ));
@@ -300,7 +300,7 @@ export default function PhotographerProfilePage() {
       }
 
       const updatedProfile = await response.json();
-      
+
       // Update local profile state
       setProfile(prev => prev ? {
         ...prev,
@@ -371,7 +371,7 @@ export default function PhotographerProfilePage() {
       }
 
       const updatedProfile = await response.json();
-      
+
       // Update profile state with new avatar
       setProfile(prev => prev ? {
         ...prev,
@@ -426,6 +426,12 @@ export default function PhotographerProfilePage() {
     e.preventDefault();
     if (!uploadForm.image || !currentUser) return;
 
+    // 🔒 CRITICAL: Prevent duplicate submissions
+    if (uploading) {
+      console.warn('⚠️ Upload already in progress, ignoring duplicate submission');
+      return;
+    }
+
     // === CRITICAL DEBUG LOGGING ===
     console.log('='.repeat(60));
     console.log('🚀 [UPLOAD] Starting photo upload...');
@@ -471,24 +477,29 @@ export default function PhotographerProfilePage() {
 
       const uploadData = await uploadRes.json();
       const imageUrl = uploadData.url || uploadData.imageUrl;
+      console.log('✅ [UPLOAD STEP 1/3] Image uploaded successfully:', imageUrl);
 
       // Then create the photo entry
-      const photoData = {
+      const photoData: any = {
         imageUrl,
-        title: uploadForm.title || undefined,
-        description: uploadForm.description || undefined,
-        location: uploadForm.location || undefined,
-        camera: uploadForm.camera || undefined,
-        lens: uploadForm.lens || undefined,
-        settings: uploadForm.settings || undefined,
-        takenAt: uploadForm.takenAt || undefined,
-        albumId: uploadForm.albumId ? uploadForm.albumId : null, // Explicit null for no album
       };
 
+      // Only include fields that have values
+      if (uploadForm.title) photoData.title = uploadForm.title;
+      if (uploadForm.description) photoData.description = uploadForm.description;
+      if (uploadForm.location) photoData.location = uploadForm.location;
+      if (uploadForm.camera) photoData.camera = uploadForm.camera;
+      if (uploadForm.lens) photoData.lens = uploadForm.lens;
+      if (uploadForm.settings) photoData.settings = uploadForm.settings;
+      if (uploadForm.takenAt) photoData.takenAt = uploadForm.takenAt;
+      if (uploadForm.albumId) photoData.albumId = uploadForm.albumId;
+
       // Debug: Log what we're sending
-      console.log('📤 Uploading photo with data:', photoData);
+      console.log('📤 [UPLOAD STEP 2/3] Uploading photo metadata to backend');
+      console.log('📤 Photo data:', photoData);
       console.log('📁 Selected albumId from form:', uploadForm.albumId);
       console.log('📁 AlbumId being sent (after processing):', photoData.albumId);
+      console.log('⏰ Upload timestamp:', new Date().toISOString());
 
       // Save photo metadata to backend
       const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
@@ -507,24 +518,25 @@ export default function PhotographerProfilePage() {
 
       const savedPhoto = await saveRes.json();
 
-      // Debug: Log what backend returned
+      console.log('✅ [UPLOAD STEP 3/3] Photo metadata saved successfully');
       console.log('✅ Backend returned photo:', savedPhoto);
       console.log('📁 Photo albumId from backend:', savedPhoto.albumId);
+      console.log('🏁 Upload completed at:', new Date().toISOString());
 
       // Add to local state
       setPhotos([savedPhoto, ...photos]);
-      
+
       // Update album photo count if photo was added to an album
       if (savedPhoto.albumId) {
-        setAlbums(albums.map(album => 
+        setAlbums(albums.map(album =>
           album.id === savedPhoto.albumId
             ? { ...album, photoCount: album.photoCount + 1 }
             : album
         ));
       }
-      
+
       setShowUploadModal(false);
-      
+
       // Reset form
       setUploadForm({
         image: null,
@@ -702,92 +714,92 @@ export default function PhotographerProfilePage() {
               </a>
 
               <div className="flex items-center gap-4">
-              <div className="relative flex items-center gap-2">
-              {profile.avatar ? (
-                <div className="relative group">
-                  <img
-                    src={profile.avatar}
-                    alt={profile.displayName}
-                    className="w-10 h-10 rounded-full object-cover opacity-90"
-                  />
-                {isOwnProfile && (
-                  <>
-                    <label
-                      htmlFor="avatar-upload"
-                      className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
-                    >
-                      {uploadingAvatar ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      ) : (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                <div className="relative flex items-center gap-2">
+                  {profile.avatar ? (
+                    <div className="relative group">
+                      <img
+                        src={profile.avatar}
+                        alt={profile.displayName}
+                        className="w-10 h-10 rounded-full object-cover opacity-90"
+                      />
+                      {isOwnProfile && (
+                        <>
+                          <label
+                            htmlFor="avatar-upload"
+                            className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                          >
+                            {uploadingAvatar ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            ) : (
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </label>
+                          <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/jpeg,image/jpg,.jpg,.jpeg"
+                            onChange={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            className="hidden"
+                          />
+                        </>
                       )}
-                    </label>
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/jpeg,image/jpg,.jpg,.jpeg"
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                      className="hidden"
-                    />
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="relative group">
-                <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
-                  {profile.displayName.charAt(0).toUpperCase()}
-                </div>
-                {isOwnProfile && (
-                  <>
-                    <label
-                      htmlFor="avatar-upload"
-                      className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
-                    >
-                      {uploadingAvatar ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      ) : (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                    </div>
+                  ) : (
+                    <div className="relative group">
+                      <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
+                        {profile.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      {isOwnProfile && (
+                        <>
+                          <label
+                            htmlFor="avatar-upload"
+                            className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                          >
+                            {uploadingAvatar ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            ) : (
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </label>
+                          <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/jpeg,image/jpg,.jpg,.jpeg"
+                            onChange={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            className="hidden"
+                          />
+                        </>
                       )}
-                    </label>
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/jpeg,image/jpg,.jpg,.jpeg"
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                      className="hidden"
-                    />
-                  </>
-                )}
-              </div>
-            )}
-              {/* Tier Badge - Only for own profile - Positioned next to avatar */}
-              {isOwnProfile && currentUser?.userTier && (
-                <div className="bg-stone-900 px-2 py-0.5 rounded text-[10px] font-medium text-stone-400 tracking-wider border border-stone-800">
-                  {currentUser.userTier}
+                    </div>
+                  )}
+                  {/* Tier Badge - Only for own profile - Positioned next to avatar */}
+                  {isOwnProfile && currentUser?.userTier && (
+                    <div className="bg-stone-900 px-2 py-0.5 rounded text-[10px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                      {currentUser.userTier}
+                    </div>
+                  )}
+                  {/* Debug badge - remove after testing */}
+                  {isOwnProfile && !currentUser?.userTier && (
+                    <div className="bg-red-900 px-2 py-0.5 rounded text-[10px] font-medium text-red-400 tracking-wider border border-red-800">
+                      NO TIER
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Debug badge - remove after testing */}
-              {isOwnProfile && !currentUser?.userTier && (
-                <div className="bg-red-900 px-2 py-0.5 rounded text-[10px] font-medium text-red-400 tracking-wider border border-red-800">
-                  NO TIER
+                <div>
+                  <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
+                  <p className="text-xs text-stone-500">@{profile.username}</p>
                 </div>
-              )}
-            </div>
-            <div>
-                <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
-                <p className="text-xs text-stone-500">@{profile.username}</p>
               </div>
             </div>
-          </div>
-            
+
             <div className="flex items-center gap-4 sm:gap-6 text-xs text-stone-500">
               <span className="hidden sm:inline">{profile.photoCount} works</span>
               {profile.xiaohongshu && (
@@ -860,33 +872,33 @@ export default function PhotographerProfilePage() {
             </div>
             <div className="flex items-center gap-3">
               <div className="relative flex items-center gap-2">
-              {profile.avatar ? (
-                <div className="relative">
-                <img
-                  src={profile.avatar}
-                  alt={profile.displayName}
-                  className="w-12 h-12 rounded-full object-cover opacity-90"
-                />
-                </div>
-              ) : (
-                <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
-                  {profile.displayName.charAt(0).toUpperCase()}
-                </div>
-                </div>
-              )}
-              {/* Tier Badge - Only for own profile - Positioned next to avatar */}
-              {isOwnProfile && currentUser?.userTier && (
-                <div className="bg-stone-900 px-2 py-0.5 rounded text-[10px] font-medium text-stone-400 tracking-wider border border-stone-800">
-                  {currentUser.userTier}
-                </div>
-              )}
-              {/* Debug badge - remove after testing */}
-              {isOwnProfile && !currentUser?.userTier && (
-                <div className="bg-red-900 px-2 py-0.5 rounded text-[10px] font-medium text-red-400 tracking-wider border border-red-800">
-                  NO TIER
-                </div>
-              )}
+                {profile.avatar ? (
+                  <div className="relative">
+                    <img
+                      src={profile.avatar}
+                      alt={profile.displayName}
+                      className="w-12 h-12 rounded-full object-cover opacity-90"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
+                      {profile.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                )}
+                {/* Tier Badge - Only for own profile - Positioned next to avatar */}
+                {isOwnProfile && currentUser?.userTier && (
+                  <div className="bg-stone-900 px-2 py-0.5 rounded text-[10px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                    {currentUser.userTier}
+                  </div>
+                )}
+                {/* Debug badge - remove after testing */}
+                {isOwnProfile && !currentUser?.userTier && (
+                  <div className="bg-red-900 px-2 py-0.5 rounded text-[10px] font-medium text-red-400 tracking-wider border border-red-800">
+                    NO TIER
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-base font-light tracking-wide truncate">{profile.displayName}</h1>
@@ -971,11 +983,10 @@ export default function PhotographerProfilePage() {
             <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide">
               <button
                 onClick={() => setSelectedAlbum(null)}
-                className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
-                  selectedAlbum === null
+                className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${selectedAlbum === null
                     ? 'bg-white text-stone-900'
                     : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
-                }`}
+                  }`}
               >
                 全部作品 ({photos.length})
               </button>
@@ -983,11 +994,10 @@ export default function PhotographerProfilePage() {
                 <div key={album.id} className="relative group">
                   <button
                     onClick={() => setSelectedAlbum(album.id)}
-                    className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${
-                      selectedAlbum === album.id
+                    className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${selectedAlbum === album.id
                         ? 'bg-white text-stone-900'
                         : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
-                    }`}
+                      }`}
                   >
                     {album.name} ({album.photoCount})
                   </button>
@@ -1044,56 +1054,56 @@ export default function PhotographerProfilePage() {
               );
             }
 
-          return (
-            <div className="max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
-              {filteredPhotos.map((photo) => (
-              <div
-                key={photo.id}
-                className="break-inside-avoid group cursor-pointer relative mb-2"
-              >
-                <div className="relative overflow-hidden bg-black border border-stone-900/50 shadow-2xl" onClick={() => setSelectedPhoto(photo)}>
-                  <img
-                    src={photo.imageUrl}
-                    alt={photo.title || 'Photography work'}
-                    className="w-full h-auto object-cover transition-all duration-1000 ease-out group-hover:scale-[1.02] group-hover:opacity-95"
-                  />
-                  {/* Subtle overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out">
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      {photo.title && (
-                        <p className="text-white text-sm font-light tracking-wide mb-1.5">{photo.title}</p>
-                      )}
-                      {photo.location && (
-                        <p className="text-stone-400 text-xs font-light tracking-wider">{photo.location}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {/* Delete button - only for own profile */}
-                {isOwnProfile && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePhoto(photo.id);
-                    }}
-                    disabled={deletingPhotoId === photo.id}
-                    className="absolute top-3 right-3 bg-red-600/70 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 disabled:opacity-50 z-10"
-                    title="删除作品"
+            return (
+              <div className="max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
+                {filteredPhotos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className="break-inside-avoid group cursor-pointer relative mb-2"
                   >
-                    {deletingPhotoId === photo.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                    <div className="relative overflow-hidden bg-black border border-stone-900/50 shadow-2xl" onClick={() => setSelectedPhoto(photo)}>
+                      <img
+                        src={photo.imageUrl}
+                        alt={photo.title || 'Photography work'}
+                        className="w-full h-auto object-cover transition-all duration-1000 ease-out group-hover:scale-[1.02] group-hover:opacity-95"
+                      />
+                      {/* Subtle overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out">
+                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                          {photo.title && (
+                            <p className="text-white text-sm font-light tracking-wide mb-1.5">{photo.title}</p>
+                          )}
+                          {photo.location && (
+                            <p className="text-stone-400 text-xs font-light tracking-wider">{photo.location}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Delete button - only for own profile */}
+                    {isOwnProfile && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePhoto(photo.id);
+                        }}
+                        disabled={deletingPhotoId === photo.id}
+                        className="absolute top-3 right-3 bg-red-600/70 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 disabled:opacity-50 z-10"
+                        title="删除作品"
+                      >
+                        {deletingPhotoId === photo.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
+                  </div>
+                ))}
               </div>
-              ))}
-            </div>
-          );
-        })()}
+            );
+          })()}
         </div>
       )}
 
@@ -1103,34 +1113,41 @@ export default function PhotographerProfilePage() {
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-6"
           onClick={() => setSelectedPhoto(null)}
         >
-          {/* Close button */}
+          {/* Close button - 更显眼 */}
           <button
-            className="absolute top-6 right-6 text-stone-400 hover:text-white transition-colors"
+            className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-all backdrop-blur-sm z-10"
             onClick={() => setSelectedPhoto(null)}
+            title="关闭"
           >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
-          {/* Delete button - only for own profile */}
+          {/* Delete button - 更低调，防止误操作 */}
           {isOwnProfile && (
             <button
-              onClick={() => handleDeletePhoto(selectedPhoto.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('确定要删除这张作品吗？此操作不可撤销。')) {
+                  handleDeletePhoto(selectedPhoto.id);
+                }
+              }}
               disabled={deletingPhotoId === selectedPhoto.id}
-              className="absolute top-6 right-20 bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-full transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="absolute top-6 left-6 text-stone-500 hover:text-red-400 transition-colors disabled:opacity-50 flex items-center gap-1.5 text-xs"
+              title="删除作品"
             >
               {deletingPhotoId === selectedPhoto.id ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  <span className="text-sm font-light">删除中...</span>
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-stone-500 border-t-transparent"></div>
+                  <span className="font-light">删除中</span>
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  <span className="text-sm font-light">删除</span>
+                  <span className="font-light">删除</span>
                 </>
               )}
             </button>
@@ -1156,7 +1173,7 @@ export default function PhotographerProfilePage() {
                   {selectedPhoto.description}
                 </p>
               )}
-              
+
               <div className="pt-4 border-t border-stone-800 space-y-2 text-xs text-stone-500 font-light">
                 {selectedPhoto.takenAt && (
                   <div>
@@ -1241,11 +1258,10 @@ export default function PhotographerProfilePage() {
                     {currentUser?.storageUsed !== undefined && currentUser?.storageLimit && (
                       <span className="ml-3">
                         已使用 {((currentUser.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB / {((currentUser.storageLimit) / (1024 * 1024)).toFixed(0)}MB
-                        <span className={`ml-2 text-xs ${
-                          ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
-                          ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
-                          'text-green-400'
-                        }`}>
+                        <span className={`ml-2 text-xs ${((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
+                            ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
+                              'text-green-400'
+                          }`}>
                           ({Math.round(((currentUser.storageUsed || 0) / currentUser.storageLimit) * 100)}%)
                         </span>
                       </span>
@@ -1482,9 +1498,9 @@ export default function PhotographerProfilePage() {
                           'Content-Type': 'application/json',
                           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                         },
-                        body: JSON.stringify({ 
-                          name: albumForm.name, 
-                          description: albumForm.description 
+                        body: JSON.stringify({
+                          name: albumForm.name,
+                          description: albumForm.description
                         }),
                       });
 
@@ -1494,7 +1510,7 @@ export default function PhotographerProfilePage() {
                       }
 
                       const updatedAlbum = await response.json();
-                      setAlbums(albums.map(album => 
+                      setAlbums(albums.map(album =>
                         album.id === editingAlbum.id ? updatedAlbum : album
                       ));
                       alert('相册更新成功！');
@@ -1507,9 +1523,9 @@ export default function PhotographerProfilePage() {
                           'Content-Type': 'application/json',
                           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                         },
-                        body: JSON.stringify({ 
-                          name: albumForm.name, 
-                          description: albumForm.description 
+                        body: JSON.stringify({
+                          name: albumForm.name,
+                          description: albumForm.description
                         }),
                       });
 
@@ -1522,7 +1538,7 @@ export default function PhotographerProfilePage() {
                       setAlbums([...albums, createdAlbum]);
                       alert('相册创建成功！');
                     }
-                    
+
                     setShowAlbumModal(false);
                     setAlbumForm({ name: '', description: '' });
                     setEditingAlbum(null);
@@ -1617,7 +1633,7 @@ export default function PhotographerProfilePage() {
               <div className="mb-6 p-4 bg-stone-800 rounded">
                 <p className="text-xs text-stone-400 mb-1">当前所在相册：</p>
                 <p className="text-sm text-white font-light">
-                  {movingPhoto.albumId 
+                  {movingPhoto.albumId
                     ? albums.find(a => a.id === movingPhoto.albumId)?.name || '未知相册'
                     : '未分类'
                   }
@@ -1628,11 +1644,10 @@ export default function PhotographerProfilePage() {
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 <button
                   onClick={() => handleMovePhoto(movingPhoto.id, '')}
-                  className={`w-full text-left px-4 py-3 rounded transition-colors ${
-                    !movingPhoto.albumId
+                  className={`w-full text-left px-4 py-3 rounded transition-colors ${!movingPhoto.albumId
                       ? 'bg-stone-700 text-white'
                       : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1650,11 +1665,10 @@ export default function PhotographerProfilePage() {
                     key={album.id}
                     onClick={() => handleMovePhoto(movingPhoto.id, album.id)}
                     disabled={movingPhoto.albumId === album.id}
-                    className={`w-full text-left px-4 py-3 rounded transition-colors ${
-                      movingPhoto.albumId === album.id
+                    className={`w-full text-left px-4 py-3 rounded transition-colors ${movingPhoto.albumId === album.id
                         ? 'bg-stone-700 text-white cursor-not-allowed'
                         : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
