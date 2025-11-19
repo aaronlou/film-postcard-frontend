@@ -88,6 +88,17 @@ export default function PhotographerProfilePage() {
 
   const isOwnProfile = currentUser && currentUser.username === username;
 
+  // Debug: Log current user data to check tier
+  useEffect(() => {
+    console.log('🔍 Profile Page Debug:');
+    console.log('  - Current User:', currentUser);
+    console.log('  - Profile Username:', username);
+    console.log('  - Is Own Profile:', isOwnProfile);
+    if (isOwnProfile && currentUser) {
+      console.log('  - User Tier:', currentUser.userTier);
+    }
+  }, [currentUser, username, isOwnProfile]);
+
   const handleDeletePhoto = async (photoId: string) => {
     if (!currentUser || !confirm('确定要删除这张作品吗？此操作不可撤销。')) return;
 
@@ -713,8 +724,14 @@ export default function PhotographerProfilePage() {
                 )}
                 {/* Tier Badge - Only for own profile */}
                 {isOwnProfile && currentUser?.userTier && (
-                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800 shadow-lg z-10">
                     {currentUser.userTier}
+                  </div>
+                )}
+                {/* Debug badge - remove after testing */}
+                {isOwnProfile && !currentUser?.userTier && (
+                  <div className="absolute -bottom-1 -right-1 bg-red-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-red-400 tracking-wider border border-red-800 z-10">
+                    NO TIER
                   </div>
                 )}
               </div>
@@ -782,10 +799,10 @@ export default function PhotographerProfilePage() {
                   </button>
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="hover:text-stone-300 transition-colors"
+                    className="hover:text-stone-300 transition-colors font-normal"
                     title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20} 张作品 | ${currentUser?.userTier || 'FREE'} 等级`}
                   >
-                    上传作品
+                    📤 上传作品
                   </button>
                   <button
                     onClick={() => {
@@ -826,9 +843,10 @@ export default function PhotographerProfilePage() {
                 {isOwnProfile && (
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="text-xs text-stone-500 hover:text-stone-300 transition-colors"
+                    className="text-xs text-stone-400 hover:text-stone-200 transition-colors font-normal px-2 py-1 bg-stone-900/50 rounded"
+                    title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20}`}
                   >
-                    上传
+                    📤 上传
                   </button>
                 )}
               </div>

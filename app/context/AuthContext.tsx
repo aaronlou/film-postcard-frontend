@@ -12,7 +12,12 @@ interface User {
   avatarUrl?: string;
   website?: string;
   location?: string;
+  xiaohongshu?: string;
+  favoriteCamera?: string;
+  favoriteLens?: string;
+  favoritePhotographer?: string;
   designCount: number;
+  photoCount?: number;
   // Storage quota fields
   userTier?: 'FREE' | 'BASIC' | 'PRO';
   storageUsed?: number;      // Bytes used
@@ -45,7 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (savedToken && savedUser) {
       setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      
+      // Refresh user data from backend to get latest tier info
+      fetch(API_ENDPOINTS.getUserProfile(parsedUser.username))
+        .then(res => res.ok ? res.json() : null)
+        .then(userData => {
+          if (userData) {
+            setUser(userData);
+            localStorage.setItem('user_data', JSON.stringify(userData));
+            console.log('✅ User data refreshed with tier:', userData.userTier);
+          }
+        })
+        .catch(err => console.error('Failed to refresh user on mount:', err));
     }
     setLoading(false);
   }, []);
@@ -62,9 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.success && data.token) {
         setToken(data.token);
-        setUser(data.user);
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user_data', JSON.stringify(data.user));
+        
+        // Fetch full user profile to get tier info
+        const profileRes = await fetch(API_ENDPOINTS.getUserProfile(username));
+        if (profileRes.ok) {
+          const userData = await profileRes.json();
+          setUser(userData);
+          localStorage.setItem('auth_token', data.token);
+          localStorage.setItem('user_data', JSON.stringify(userData));
+          console.log('✅ Login successful, user tier:', userData.userTier);
+        } else {
+          // Fallback to login response user data
+          setUser(data.user);
+          localStorage.setItem('auth_token', data.token);
+          localStorage.setItem('user_data', JSON.stringify(data.user));
+        }
         return true;
       }
       return false;
