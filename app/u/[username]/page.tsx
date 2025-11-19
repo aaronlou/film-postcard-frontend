@@ -711,6 +711,12 @@ export default function PhotographerProfilePage() {
                     />
                   </>
                 )}
+                {/* Tier Badge - Only for own profile */}
+                {isOwnProfile && currentUser?.userTier && (
+                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                    {currentUser.userTier}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="relative group">
@@ -742,14 +748,14 @@ export default function PhotographerProfilePage() {
                     />
                   </>
                 )}
+                {/* Tier Badge - Only for own profile */}
+                {isOwnProfile && currentUser?.userTier && (
+                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                    {currentUser.userTier}
+                  </div>
+                )}
               </div>
             )}
-              {/* Tier Badge - Only for own profile */}
-              {isOwnProfile && currentUser?.userTier && (
-                <div className="absolute -bottom-1 -right-1 text-[9px] font-light text-stone-500 tracking-wider">
-                  {currentUser.userTier}
-                </div>
-              )}
             </div>
             <div>
                 <h1 className="text-lg font-light tracking-wide">{profile.displayName}</h1>
@@ -830,19 +836,30 @@ export default function PhotographerProfilePage() {
             <div className="flex items-center gap-3">
               <div className="relative">
               {profile.avatar ? (
+                <div className="relative">
                 <img
                   src={profile.avatar}
                   alt={profile.displayName}
                   className="w-12 h-12 rounded-full object-cover opacity-90"
                 />
+                {/* Tier Badge - Only for own profile */}
+                {isOwnProfile && currentUser?.userTier && (
+                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                    {currentUser.userTier}
+                  </div>
+                )}
+                </div>
               ) : (
+                <div className="relative">
                 <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-sm font-light">
                   {profile.displayName.charAt(0).toUpperCase()}
                 </div>
-              )}
-              {isOwnProfile && currentUser?.userTier && (
-                <div className="absolute -bottom-1 -right-1 text-[9px] font-light text-stone-500 tracking-wider">
-                  {currentUser.userTier}
+                {/* Tier Badge - Only for own profile */}
+                {isOwnProfile && currentUser?.userTier && (
+                  <div className="absolute -bottom-1 -right-1 bg-stone-900 px-1.5 py-0.5 rounded text-[9px] font-medium text-stone-400 tracking-wider border border-stone-800">
+                    {currentUser.userTier}
+                  </div>
+                )}
                 </div>
               )}
               </div>
