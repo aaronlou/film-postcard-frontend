@@ -14,17 +14,18 @@ const PolaroidTemplate = forwardRef<HTMLDivElement, PolaroidTemplateProps>(
 
     return (
       <div className="flex justify-center items-center">
-        <div 
+        <div
           ref={ref}
+          id="polaroid-preview-content"
           className="bg-white p-4 rounded-sm shadow-2xl"
           style={{ width: '360px' }}
         >
           {/* Photo area - square format */}
           {image ? (
             <div className="relative aspect-square bg-stone-200 overflow-hidden mb-4">
-              <img 
-                src={image} 
-                alt="Polaroid" 
+              <img
+                src={image}
+                alt="Polaroid"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -38,7 +39,7 @@ const PolaroidTemplate = forwardRef<HTMLDivElement, PolaroidTemplateProps>(
               </div>
             </div>
           )}
-          
+
           {/* White bottom area - like real Polaroid */}
           <div className="pt-4 pb-2 min-h-[100px] flex items-center justify-between">
             {/* Handwritten-style text area */}
@@ -53,12 +54,12 @@ const PolaroidTemplate = forwardRef<HTMLDivElement, PolaroidTemplateProps>(
                 </p>
               )}
             </div>
-            
+
             {/* Small QR code in bottom right */}
             <div className="flex-shrink-0">
               <div className="bg-white p-1 rounded shadow-sm border border-stone-200/50">
-                <QRCodeSVG 
-                  value={qrUrl} 
+                <QRCodeSVG
+                  value={qrUrl}
                   size={32}
                   level="H"
                   includeMargin={false}

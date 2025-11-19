@@ -48,6 +48,27 @@ export function usePostcardGenerator({
                 foreignObjectRendering: false,
                 imageTimeout: 0,
                 removeContainer: true,
+                windowWidth: 1920, // Simulate desktop to prevent mobile layout shifts
+                onclone: (clonedDoc) => {
+                    const templates = [
+                        { id: 'postcard-preview-content', width: '480px' },
+                        { id: 'bookmark-preview-content', width: '280px' },
+                        { id: 'polaroid-preview-content', width: '360px' },
+                        { id: 'greeting-preview-content', width: '420px' },
+                        { id: 'businesscard-preview-content', width: '400px' },
+                    ];
+
+                    templates.forEach(({ id, width }) => {
+                        const element = clonedDoc.getElementById(id);
+                        if (element) {
+                            element.style.width = width;
+                            element.style.minWidth = width;
+                            element.style.maxWidth = 'none';
+                            element.style.height = 'auto';
+                            element.style.whiteSpace = 'normal';
+                        }
+                    });
+                },
             });
 
             // Restore original styling

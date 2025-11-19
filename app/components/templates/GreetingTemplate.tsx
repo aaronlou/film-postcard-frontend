@@ -14,8 +14,9 @@ const GreetingTemplate = forwardRef<HTMLDivElement, GreetingTemplateProps>(
 
     return (
       <div className="flex justify-center items-center">
-        <div 
+        <div
           ref={ref}
+          id="greeting-preview-content"
           className="bg-stone-50 rounded-lg shadow-2xl overflow-hidden"
           style={{ width: '420px', height: '580px' }}
         >
@@ -33,9 +34,9 @@ const GreetingTemplate = forwardRef<HTMLDivElement, GreetingTemplateProps>(
                   <div key={`r-${i}`} className="w-1 h-1 bg-stone-800/40 rounded-sm" />
                 ))}
               </div>
-              <img 
-                src={image} 
-                alt="Greeting" 
+              <img
+                src={image}
+                alt="Greeting"
                 className="w-full h-full object-cover"
               />
               {/* Decorative border overlay */}
@@ -56,7 +57,7 @@ const GreetingTemplate = forwardRef<HTMLDivElement, GreetingTemplateProps>(
           <div className="h-[240px] bg-white/80 p-8 flex flex-col justify-between relative">
             {/* Decorative top border */}
             <div className="absolute top-0 left-8 right-8 h-px bg-stone-300" />
-            
+
             {/* Message area */}
             <div className="flex-1 flex items-center justify-center">
               {text ? (
@@ -78,12 +79,12 @@ const GreetingTemplate = forwardRef<HTMLDivElement, GreetingTemplateProps>(
                   ✼ ✼ ✼
                 </div>
               </div>
-              
+
               {/* Small QR code */}
               <div className="flex-shrink-0">
                 <div className="bg-white p-1 rounded shadow-sm border border-stone-200/50">
-                  <QRCodeSVG 
-                    value={qrUrl} 
+                  <QRCodeSVG
+                    value={qrUrl}
                     size={36}
                     level="H"
                     includeMargin={false}

@@ -29,7 +29,7 @@ export default function PreviewSection({
                         className="bg-[#f5f0e8] p-8 rounded-3xl shadow-2xl relative"
                         style={{ width: '480px' }}
                     >
-                        <div ref={contentRef} className="bg-white p-6 rounded-2xl shadow-inner relative">
+                        <div ref={contentRef} id="postcard-preview-content" className="bg-white p-6 rounded-2xl shadow-inner relative">
                             {image ? (
                                 <div className="relative aspect-square bg-stone-200 rounded-xl overflow-hidden mb-6">
                                     <img
@@ -93,7 +93,7 @@ export default function PreviewSection({
                     data={{ image, text, qrUrl }}
                 />
             ) : currentTemplate === 'businesscard' ? (
-                <div ref={contentRef}>
+                <div ref={contentRef} id="businesscard-preview-content">
                     <BusinessCardTemplate
                         image={image}
                         text={text}

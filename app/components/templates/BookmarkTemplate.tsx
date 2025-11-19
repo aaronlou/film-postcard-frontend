@@ -14,8 +14,9 @@ const BookmarkTemplate = forwardRef<HTMLDivElement, BookmarkTemplateProps>(
 
     return (
       <div className="flex justify-center items-center">
-        <div 
+        <div
           ref={ref}
+          id="bookmark-preview-content"
           className="bg-amber-50 p-6 rounded-2xl shadow-2xl"
           style={{ width: '280px', height: '600px' }}
         >
@@ -35,9 +36,9 @@ const BookmarkTemplate = forwardRef<HTMLDivElement, BookmarkTemplateProps>(
                     <div key={`r-${i}`} className="w-0.5 h-0.5 bg-stone-800/40 rounded-sm" />
                   ))}
                 </div>
-                <img 
-                  src={image} 
-                  alt="Bookmark" 
+                <img
+                  src={image}
+                  alt="Bookmark"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -51,7 +52,7 @@ const BookmarkTemplate = forwardRef<HTMLDivElement, BookmarkTemplateProps>(
                 </div>
               </div>
             )}
-            
+
             {/* Text section */}
             <div className="flex-1 flex flex-col justify-center text-center px-2">
               {text ? (
@@ -64,13 +65,13 @@ const BookmarkTemplate = forwardRef<HTMLDivElement, BookmarkTemplateProps>(
                 </p>
               )}
             </div>
-            
+
             {/* QR code at bottom */}
             <div className="flex justify-center pt-3 border-t border-stone-200 mt-auto">
               <div className="text-center">
                 <div className="bg-white p-1 rounded shadow-sm border border-stone-200/50 inline-block">
-                  <QRCodeSVG 
-                    value={qrUrl} 
+                  <QRCodeSVG
+                    value={qrUrl}
                     size={36}
                     level="H"
                     includeMargin={false}

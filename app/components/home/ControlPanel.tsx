@@ -58,13 +58,42 @@ export default function ControlPanel({
                                     )}
                                 </p>
                             )}
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={onImageUpload}
-                                disabled={isUploadingImage}
-                                className="block w-full text-sm text-stone-600 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-stone-800 file:text-white hover:file:bg-stone-700 file:cursor-pointer cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            />
+                            <div className="relative group">
+                                <input
+                                    type="file"
+                                    id="image-upload"
+                                    accept="image/*"
+                                    onChange={onImageUpload}
+                                    disabled={isUploadingImage}
+                                    className="hidden"
+                                />
+                                <label
+                                    htmlFor="image-upload"
+                                    className={`flex flex-col items-center justify-center w-full h-32 sm:h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploadingImage
+                                            ? 'border-stone-200 bg-stone-50 opacity-50 cursor-not-allowed'
+                                            : 'border-stone-300 bg-white/50 hover:bg-white hover:border-stone-400 hover:shadow-md group-hover:scale-[1.01]'
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        {isUploadingImage ? (
+                                            <svg className="animate-spin h-8 w-8 text-stone-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-8 h-8 sm:w-10 sm:h-10 text-stone-400 mb-3 group-hover:text-stone-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        )}
+                                        <p className="mb-2 text-sm text-stone-600 font-medium">
+                                            {isUploadingImage ? '正在上传...' : '点击上传照片'}
+                                        </p>
+                                        <p className="text-xs text-stone-400">
+                                            支持 JPG, PNG (最大 {((user?.singleFileLimit || 10 * 1024 * 1024) / (1024 * 1024)).toFixed(0)}MB)
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     )}
 
@@ -103,9 +132,22 @@ export default function ControlPanel({
                             <button
                                 onClick={handlePolishText}
                                 disabled={!text.trim() || isPolishing}
-                                className="text-xs text-stone-400 hover:text-stone-600 transition-colors disabled:text-stone-300 disabled:cursor-not-allowed italic"
+                                className="text-xs text-stone-400 hover:text-stone-600 transition-colors disabled:text-stone-300 disabled:cursor-not-allowed italic flex items-center gap-1"
                             >
-                                {isPolishing ? '优化中...' : '✨ 让AI润色'}
+                                {isPolishing ? (
+                                    <>
+                                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>优化中...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>✨</span>
+                                        <span>让AI润色</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                         <textarea
@@ -113,7 +155,7 @@ export default function ControlPanel({
                             onChange={(e) => setText(e.target.value)}
                             placeholder={currentTemplate === 'businesscard' ? 'PHOTOGRAPHER / 独立摄影师' : '全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融'}
                             rows={4}
-                            className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none text-stone-700 placeholder:text-stone-400 bg-white/80"
+                            className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none text-stone-700 placeholder:text-stone-300 bg-white/80 transition-all hover:bg-white"
                         />
                     </div>
 
