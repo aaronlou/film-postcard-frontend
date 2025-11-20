@@ -48,7 +48,7 @@ export default function PhotographerProfilePage() {
   const params = useParams();
   // Decode username to handle special characters and spaces
   const username = decodeURIComponent(params.username as string);
-  const { user: currentUser, refreshUser } = useAuth();
+  const { user: currentUser, refreshUser, logout } = useAuth();
 
   const [profile, setProfile] = useState<PhotographerProfile | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -925,6 +925,18 @@ export default function PhotographerProfilePage() {
                   >
                     设置
                   </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('确定要退出登录吗？')) {
+                        logout();
+                        window.location.href = '/';
+                      }
+                    }}
+                    className="hidden sm:inline hover:text-red-400 transition-colors"
+                    title="退出登录"
+                  >
+                    退出
+                  </button>
                 </>
               )}
             </div>
@@ -942,16 +954,30 @@ export default function PhotographerProfilePage() {
                 </svg>
                 <span className="text-xs font-light">主页</span>
               </a>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-stone-500">{profile.photoCount} works</span>
                 {isOwnProfile && (
-                  <button
-                    onClick={() => setShowUploadModal(true)}
-                    className="text-xs text-stone-400 hover:text-stone-200 transition-colors font-normal px-2 py-1 bg-stone-900/50 rounded"
-                    title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20}`}
-                  >
-                    📤 上传
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowUploadModal(true)}
+                      className="text-xs text-stone-400 hover:text-stone-200 transition-colors font-normal px-2 py-1 bg-stone-900/50 rounded"
+                      title={`已上传 ${profile.photoCount}/${currentUser?.photoLimit || 20}`}
+                    >
+                      📤 上传
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('确定要退出登录吗？')) {
+                          logout();
+                          window.location.href = '/';
+                        }
+                      }}
+                      className="text-xs text-stone-400 hover:text-red-400 transition-colors px-2 py-1 bg-stone-900/50 rounded"
+                      title="退出登录"
+                    >
+                      退出
+                    </button>
+                  </>
                 )}
               </div>
             </div>
