@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/app/config/api';
 import { useAuth } from '@/app/context/AuthContext';
+import LazyImage from '@/app/components/LazyImage';
 
 interface Photo {
   id: string;
-  imageUrl: string;
+  imageUrl: string; // 原图 URL (对应后端 imageUrl)
+  imageUrlThumb?: string; // 缩略图 (~300px, 对应后端 imageUrlThumb)
+  imageUrlMedium?: string; // 中图 (~1280px, 对应后端 imageUrlMedium)
   title?: string;
   description?: string;
   takenAt?: string;
@@ -52,8 +55,17 @@ export default function PhotographerProfilePage() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null); // null = 全部作品
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [viewingOriginal, setViewingOriginal] = useState(false); // 是否查看原图
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPhotos, setTotalPhotos] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 20; // 每页 20 张图片
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     image: null as File | null,
@@ -636,10 +648,10 @@ export default function PhotographerProfilePage() {
           return;
         }
 
-        // 并行获取用户信息、作品和相册
+        // 并行获取用户信息、作品(分页)和相册
         const [profileRes, photosRes, albumsRes] = await Promise.all([
           fetch(API_ENDPOINTS.getUserProfile(username)),
-          fetch(API_ENDPOINTS.getUserPhotos(username)),
+          fetch(API_ENDPOINTS.getUserPhotos(username, 1, PAGE_SIZE)), // 第一页，20张
           fetch(API_ENDPOINTS.getUserAlbums(username)),
         ]);
 
@@ -649,7 +661,7 @@ export default function PhotographerProfilePage() {
 
         const [profileData, photosData, albumsData] = await Promise.all([
           profileRes.json(),
-          photosRes.ok ? photosRes.json() : { photos: [] },
+          photosRes.ok ? photosRes.json() : { photos: [], currentPage: 1, totalPages: 0, totalPhotos: 0, hasNext: false },
           albumsRes.ok ? albumsRes.json() : { albums: [] },
         ]);
 
@@ -658,7 +670,14 @@ export default function PhotographerProfilePage() {
           avatar: profileData.avatarUrl || profileData.avatar, // Normalize avatar field
           photoCount: profileData.photoCount || profileData.designCount,
         });
-        setPhotos(photosData.photos || photosData || []);
+        
+        // 后端已经返回 imageUrlThumb 和 imageUrlMedium，直接使用
+        setPhotos(photosData.photos || []);
+        setCurrentPage(photosData.currentPage || 1);
+        setTotalPages(photosData.totalPages || 0);
+        setTotalPhotos(photosData.totalPhotos || 0);
+        setHasMore(photosData.hasNext || false);
+        
         setAlbums(albumsData.albums || albumsData || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : '加载失败');
@@ -671,6 +690,35 @@ export default function PhotographerProfilePage() {
       fetchUserData();
     }
   }, [username]);
+
+  // 加载更多照片
+  const loadMorePhotos = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const response = await fetch(API_ENDPOINTS.getUserPhotos(username, nextPage, PAGE_SIZE));
+      
+      if (!response.ok) {
+        throw new Error('Failed to load more photos');
+      }
+      
+      const data = await response.json();
+      
+      // 追加新照片到列表
+      setPhotos(prev => [...prev, ...(data.photos || [])]);
+      setCurrentPage(data.currentPage || nextPage);
+      setTotalPages(data.totalPages || totalPages);
+      setHasMore(data.hasNext || false);
+      
+      console.log(`📸 Loaded page ${nextPage}/${data.totalPages}, total photos: ${photos.length + (data.photos?.length || 0)}`);
+    } catch (error) {
+      console.error('Load more photos error:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1061,53 +1109,89 @@ export default function PhotographerProfilePage() {
             }
 
             return (
-              <div className="max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
-                {filteredPhotos.map((photo) => (
-                  <div
-                    key={photo.id}
-                    className="break-inside-avoid group cursor-pointer relative mb-2"
-                  >
-                    <div className="relative overflow-hidden bg-black border border-stone-900/50 shadow-2xl" onClick={() => setSelectedPhoto(photo)}>
-                      <img
-                        src={photo.imageUrl}
-                        alt={photo.title || 'Photography work'}
-                        className="w-full h-auto object-cover transition-all duration-1000 ease-out group-hover:scale-[1.02] group-hover:opacity-95"
-                      />
-                      {/* Subtle overlay on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out">
-                        <div className="absolute bottom-0 left-0 right-0 p-6">
-                          {photo.title && (
-                            <p className="text-white text-sm font-light tracking-wide mb-1.5">{photo.title}</p>
-                          )}
-                          {photo.location && (
-                            <p className="text-stone-400 text-xs font-light tracking-wider">{photo.location}</p>
-                          )}
+              <>
+                <div className="max-w-7xl mx-auto columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
+                  {filteredPhotos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="break-inside-avoid group cursor-pointer relative mb-2"
+                    >
+                      <div className="relative overflow-hidden bg-black border border-stone-900/50 shadow-2xl">
+                        {/* 使用 LazyImage 组件，缩略图 -> 中图 */}
+                        <LazyImage
+                          src={photo.imageUrlMedium || photo.imageUrlThumb || photo.imageUrl}
+                          thumbSrc={photo.imageUrlThumb}
+                          alt={photo.title || 'Photography work'}
+                          className="w-full h-auto transition-all duration-1000 ease-out group-hover:scale-[1.02] group-hover:opacity-95"
+                          onClick={() => setSelectedPhoto(photo)}
+                        />
+                        {/* Subtle overlay on hover */}
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out"
+                          onClick={() => setSelectedPhoto(photo)}
+                        >
+                          <div className="absolute bottom-0 left-0 right-0 p-6">
+                            {photo.title && (
+                              <p className="text-white text-sm font-light tracking-wide mb-1.5">{photo.title}</p>
+                            )}
+                            {photo.location && (
+                              <p className="text-stone-400 text-xs font-light tracking-wider">{photo.location}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      {/* Delete button - only for own profile */}
+                      {isOwnProfile && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(photo.id);
+                          }}
+                          disabled={deletingPhotoId === photo.id}
+                          className="absolute top-3 right-3 bg-red-600/70 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 disabled:opacity-50 z-10"
+                          title="删除作品"
+                        >
+                          {deletingPhotoId === photo.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                     </div>
-                    {/* Delete button - only for own profile */}
-                    {isOwnProfile && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeletePhoto(photo.id);
-                        }}
-                        disabled={deletingPhotoId === photo.id}
-                        className="absolute top-3 right-3 bg-red-600/70 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 disabled:opacity-50 z-10"
-                        title="删除作品"
-                      >
-                        {deletingPhotoId === photo.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        ) : (
+                  ))}
+                </div>
+                
+                {/* 加载更多按钮 */}
+                {!selectedAlbum && hasMore && (
+                  <div className="max-w-7xl mx-auto mt-12 mb-16 text-center">
+                    <button
+                      onClick={loadMorePhotos}
+                      disabled={loadingMore}
+                      className="px-8 py-3 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-full text-sm font-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-stone-500 border-t-stone-300"></div>
+                          <span>加载中...</span>
+                        </>
+                      ) : (
+                        <>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
-                        )}
-                      </button>
-                    )}
+                          <span>加载更多 ({photos.length}/{totalPhotos})</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-stone-600 text-xs mt-3 font-light">
+                      第 {currentPage}/{totalPages} 页
+                    </p>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             );
           })()}
         </div>
@@ -1117,12 +1201,18 @@ export default function PhotographerProfilePage() {
       {selectedPhoto && (
         <div
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-6"
-          onClick={() => setSelectedPhoto(null)}
+          onClick={() => {
+            setSelectedPhoto(null);
+            setViewingOriginal(false);
+          }}
         >
           {/* Close button - 更显眼 */}
           <button
             className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-all backdrop-blur-sm z-10"
-            onClick={() => setSelectedPhoto(null)}
+            onClick={() => {
+              setSelectedPhoto(null);
+              setViewingOriginal(false);
+            }}
             title="关闭"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1159,14 +1249,40 @@ export default function PhotographerProfilePage() {
             </button>
           )}
 
+          {/* 查看原图按钮 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewingOriginal(!viewingOriginal);
+            }}
+            className="absolute bottom-6 right-6 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all backdrop-blur-sm text-xs font-light flex items-center gap-2"
+            title={viewingOriginal ? '查看中图' : '查看原图'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+            {viewingOriginal ? '中图' : '原图'}
+          </button>
+
           <div className="max-w-6xl w-full flex flex-col md:flex-row gap-8 items-center" onClick={(e) => e.stopPropagation()}>
             {/* Image */}
-            <div className="flex-1 max-h-[80vh] flex items-center justify-center">
-              <img
-                src={selectedPhoto.imageUrl}
-                alt={selectedPhoto.title || 'Photo'}
-                className="max-w-full max-h-full object-contain"
-              />
+            <div className="flex-1 max-h-[80vh] flex items-center justify-center relative">
+              {viewingOriginal ? (
+                // 原图：直接显示，不用懒加载
+                <img
+                  src={selectedPhoto.imageUrl}
+                  alt={selectedPhoto.title || 'Photo'}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                // 中图：使用 LazyImage
+                <LazyImage
+                  src={selectedPhoto.imageUrlMedium || selectedPhoto.imageUrl}
+                  thumbSrc={selectedPhoto.imageUrlThumb}
+                  alt={selectedPhoto.title || 'Photo'}
+                  className="max-w-full max-h-full"
+                />
+              )}
             </div>
 
             {/* Photo Info */}

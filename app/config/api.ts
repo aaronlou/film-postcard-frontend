@@ -10,7 +10,13 @@ export const API_ENDPOINTS = {
   register: `${API_BASE_URL}/api/users/register`,
   login: `${API_BASE_URL}/api/users/login`,
   getUserProfile: (username: string) => `${API_BASE_URL}/api/users/${username}`,
-  getUserPhotos: (username: string) => `${API_BASE_URL}/api/users/${username}/photos`,
+  getUserPhotos: (username: string, page?: number, pageSize?: number) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (pageSize) params.append('pageSize', pageSize.toString());
+    const query = params.toString();
+    return `${API_BASE_URL}/api/users/${username}/photos${query ? `?${query}` : ''}`;
+  },
   getUserDesigns: (username: string) => `${API_BASE_URL}/api/users/${username}/designs`,
   updateUserProfile: (username: string) => `${API_BASE_URL}/api/users/${username}`,
   uploadAvatar: (username: string) => `${API_BASE_URL}/api/users/${username}/avatar`,
