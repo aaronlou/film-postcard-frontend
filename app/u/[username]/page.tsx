@@ -734,6 +734,18 @@ export default function PhotographerProfilePage() {
 
         // 后端已经返回 imageUrlThumb 和 imageUrlMedium，直接使用
         setPhotos(photosData.photos || []);
+        
+        // 🔍 DEBUG: 检查照片数据中是否有缩略图
+        if (photosData.photos && photosData.photos.length > 0) {
+          const firstPhoto = photosData.photos[0];
+          console.log('📸 [DEBUG] First photo data:');
+          console.log('  - imageUrl:', firstPhoto.imageUrl);
+          console.log('  - imageUrlThumb:', firstPhoto.imageUrlThumb);
+          console.log('  - imageUrlMedium:', firstPhoto.imageUrlMedium);
+          console.log('  - Has thumb?', !!firstPhoto.imageUrlThumb);
+          console.log('  - Has medium?', !!firstPhoto.imageUrlMedium);
+        }
+        
         setCurrentPage(photosData.currentPage || 1);
         setTotalPages(photosData.totalPages || 0);
         setTotalPhotos(photosData.totalPhotos || 0);
@@ -836,6 +848,7 @@ export default function PhotographerProfilePage() {
                         src={profile.avatar}
                         alt={profile.displayName}
                         className="w-10 h-10 rounded-full object-cover opacity-90"
+                        loading="lazy"
                       />
                       {isOwnProfile && (
                         <>
@@ -1019,6 +1032,7 @@ export default function PhotographerProfilePage() {
                       src={profile.avatar}
                       alt={profile.displayName}
                       className="w-12 h-12 rounded-full object-cover opacity-90"
+                      loading="lazy"
                     />
                   </div>
                 ) : (
@@ -1129,7 +1143,7 @@ export default function PhotographerProfilePage() {
                   : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
                   }`}
               >
-                全部作品 ({photos.length})
+                全部作品 ({totalPhotos || profile?.photoCount || 0})
               </button>
               {albums.map((album) => (
                 <div key={album.id} className="relative group">
