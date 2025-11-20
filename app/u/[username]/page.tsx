@@ -449,6 +449,14 @@ export default function PhotographerProfilePage() {
       console.warn('⚠️ Upload already in progress, ignoring duplicate submission');
       return;
     }
+    
+    // 🔑 Check authentication before upload
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      alert('登录状态已失效，请重新登录后上传。');
+      window.location.href = '/auth';
+      return;
+    }
 
     // === CRITICAL DEBUG LOGGING ===
     console.log('='.repeat(60));
@@ -477,10 +485,23 @@ export default function PhotographerProfilePage() {
       formData.append('image', uploadForm.image);
 
       const token = localStorage.getItem('auth_token');
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      
+      // 🔍 DEBUG: Check token availability
+      console.log('🔑 [AUTH] Token check:');
+      console.log('  - Token exists:', !!token);
+      console.log('  - Token length:', token?.length || 0);
+      console.log('  - Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
+      
+      if (!token) {
+        throw new Error('登录状态已失效，请重新登录');
       }
+      
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      console.log('📤 [UPLOAD] Uploading image to:', API_ENDPOINTS.uploadImage);
+      console.log('📤 [UPLOAD] Request headers:', headers);
 
       const uploadRes = await fetch(API_ENDPOINTS.uploadImage, {
         method: 'POST',
@@ -488,9 +509,13 @@ export default function PhotographerProfilePage() {
         body: formData,
       });
 
+      console.log('📥 [UPLOAD] Response status:', uploadRes.status);
+      console.log('📥 [UPLOAD] Response ok:', uploadRes.ok);
+
       if (!uploadRes.ok) {
         const errorData = await uploadRes.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Image upload failed');
+        console.error('❌ [UPLOAD] Error response:', errorData);
+        throw new Error(errorData.message || `上传失败 (${uploadRes.status})`);
       }
 
       const uploadData = await uploadRes.json();
@@ -520,18 +545,24 @@ export default function PhotographerProfilePage() {
       console.log('⏰ Upload timestamp:', new Date().toISOString());
 
       // Save photo metadata to backend
+      console.log('📤 [SAVE] Saving photo metadata to:', API_ENDPOINTS.uploadPhoto(currentUser.username));
+      
       const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(photoData),
       });
 
+      console.log('📥 [SAVE] Response status:', saveRes.status);
+      console.log('📥 [SAVE] Response ok:', saveRes.ok);
+
       if (!saveRes.ok) {
         const errorData = await saveRes.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to save photo metadata');
+        console.error('❌ [SAVE] Error response:', errorData);
+        throw new Error(errorData.message || `保存失败 (${saveRes.status})`);
       }
 
       const savedPhoto = await saveRes.json();
@@ -1368,19 +1399,19 @@ export default function PhotographerProfilePage() {
 
       {/* Upload Modal */}
       {showUploadModal && isOwnProfile && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-stone-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-8">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-stone-900 rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-8">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-xl font-light text-white">上传摄影作品</h2>
+                  <h2 className="text-lg sm:text-xl font-light text-white">上传摄影作品</h2>
                   <p className="text-xs text-stone-500 mt-1">
-                    已上传 {photos.length}/{currentUser?.photoLimit || 20} 张作品
+                    <span className="inline-block">已上传 {photos.length}/{currentUser?.photoLimit || 20} 张</span>
                     {currentUser?.storageUsed !== undefined && currentUser?.storageLimit && (
-                      <span className="ml-3">
-                        已使用 {((currentUser.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB / {((currentUser.storageLimit) / (1024 * 1024)).toFixed(0)}MB
-                        <span className={`ml-2 text-xs ${((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
+                      <span className="ml-2 sm:ml-3 inline-block">
+                        {((currentUser.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB / {((currentUser.storageLimit) / (1024 * 1024)).toFixed(0)}MB
+                        <span className={`ml-1 sm:ml-2 text-xs ${((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
                             ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
                               'text-green-400'
                           }`}>
@@ -1403,7 +1434,7 @@ export default function PhotographerProfilePage() {
                 </button>
               </div>
 
-              <form onSubmit={handleUploadSubmit} className="space-y-6">
+              <form onSubmit={handleUploadSubmit} className="space-y-4 sm:space-y-6">
                 {/* Image Upload */}
                 <div>
                   <label className="block text-stone-400 text-xs mb-3 font-light tracking-wide">
@@ -1445,7 +1476,7 @@ export default function PhotographerProfilePage() {
                     type="text"
                     value={uploadForm.title}
                     onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                     placeholder="Golden Hour"
                   />
                 </div>
@@ -1459,13 +1490,13 @@ export default function PhotographerProfilePage() {
                     value={uploadForm.description}
                     onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                     rows={3}
-                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors resize-none"
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors resize-none placeholder:text-stone-600"
                     placeholder="A beautiful moment captured..."
                   />
                 </div>
 
                 {/* Location & Date */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
                       拍摄地点
@@ -1474,7 +1505,7 @@ export default function PhotographerProfilePage() {
                       type="text"
                       value={uploadForm.location}
                       onChange={(e) => setUploadForm({ ...uploadForm, location: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                       placeholder="Tokyo, Japan"
                     />
                   </div>
@@ -1486,13 +1517,13 @@ export default function PhotographerProfilePage() {
                       type="date"
                       value={uploadForm.takenAt}
                       onChange={(e) => setUploadForm({ ...uploadForm, takenAt: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                     />
                   </div>
                 </div>
 
                 {/* Camera & Lens */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-stone-400 text-xs mb-2 font-light tracking-wide">
                       相机
@@ -1501,7 +1532,7 @@ export default function PhotographerProfilePage() {
                       type="text"
                       value={uploadForm.camera}
                       onChange={(e) => setUploadForm({ ...uploadForm, camera: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                       placeholder="Leica M11"
                     />
                   </div>
@@ -1513,7 +1544,7 @@ export default function PhotographerProfilePage() {
                       type="text"
                       value={uploadForm.lens}
                       onChange={(e) => setUploadForm({ ...uploadForm, lens: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                      className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                       placeholder="50mm f/1.4"
                     />
                   </div>
@@ -1528,7 +1559,7 @@ export default function PhotographerProfilePage() {
                     type="text"
                     value={uploadForm.settings}
                     onChange={(e) => setUploadForm({ ...uploadForm, settings: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors"
+                    className="w-full bg-stone-800 border border-stone-700 rounded px-4 py-2 text-white text-sm focus:outline-none focus:border-stone-500 transition-colors placeholder:text-stone-600"
                     placeholder="ISO 400, f/2.8, 1/500s"
                   />
                 </div>
@@ -1558,7 +1589,7 @@ export default function PhotographerProfilePage() {
                 )}
 
                 {/* Submit Button */}
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     type="submit"
                     disabled={uploading || !uploadForm.image}
@@ -1572,7 +1603,7 @@ export default function PhotographerProfilePage() {
                       setShowUploadModal(false);
                       setUploadPreview(null);
                     }}
-                    className="px-6 bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
+                    className="sm:px-6 bg-stone-800 text-stone-300 py-3 rounded font-light text-sm hover:bg-stone-700 transition-colors"
                   >
                     取消
                   </button>

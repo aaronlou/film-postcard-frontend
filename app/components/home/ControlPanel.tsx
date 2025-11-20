@@ -166,16 +166,16 @@ export default function ControlPanel({
                         <p className="text-xs text-stone-500 mb-2">
                             {isAuthenticated && user ? (
                                 <>
-                                    已自动填充你的个人主页：
-                                    <a href={`/u/${user.username}`} target="_blank" className="text-amber-600 hover:text-amber-700 underline">
+                                    <span className="block sm:inline">已自动填充你的个人主页：</span>
+                                    <a href={`/u/${user.username}`} target="_blank" className="text-amber-600 hover:text-amber-700 underline break-all">
                                         https://film.isnap.world/u/{user.username}
                                     </a>
                                 </>
                             ) : (
                                 <>
-                                    还没有个人作品空间？
+                                    <span className="block sm:inline">还没有个人作品空间？</span>
                                     <a href="/auth" className="text-amber-600 hover:text-amber-700 underline">点击创建</a>
-                                    你的专属页面（如：film.isnap.world/u/yourname）
+                                    <span className="block sm:inline">你的专属页面（如：film.isnap.world/u/yourname）</span>
                                 </>
                             )}
                         </p>
