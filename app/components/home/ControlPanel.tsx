@@ -48,7 +48,24 @@ export default function ControlPanel({
                                     <span className="ml-2 text-xs text-stone-500 italic">上传中...</span>
                                 )}
                             </label>
-                            {isAuthenticated && user && (
+                            {/* 🔒 登录状态提示 */}
+                            {!isAuthenticated ? (
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3">
+                                    <div className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-blue-900 mb-1">上传图片需要登录</p>
+                                            <p className="text-xs text-blue-700">
+                                                请先
+                                                <a href="/auth" className="underline hover:text-blue-800 font-medium">登录或注册</a>
+                                                ，享更多存储空间和定制功能
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : user && (
                                 <p className="text-xs text-stone-500 mb-2">
                                     {user.userTier || 'FREE'} 等级 | 单文件最大 {((user.singleFileLimit || 10 * 1024 * 1024) / (1024 * 1024)).toFixed(0)}MB
                                     {user.storageUsed !== undefined && user.storageLimit && (

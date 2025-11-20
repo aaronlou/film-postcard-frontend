@@ -22,6 +22,19 @@ export function useImageUpload() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // 🔒 Check authentication first
+        const token = localStorage.getItem('auth_token');
+        if (!token || !user) {
+            toast.error('请先登录后再上传图片');
+            // Reset file input
+            e.target.value = '';
+            // Redirect to login after a short delay
+            setTimeout(() => {
+                window.location.href = '/auth';
+            }, 1500);
+            return;
+        }
+
         // Validate file size - use user's tier limit
         const maxSize = user?.singleFileLimit || (10 * 1024 * 1024); // Default 10MB for FREE
         if (file.size > maxSize) {
@@ -41,11 +54,9 @@ export function useImageUpload() {
             const formData = new FormData();
             formData.append('image', file);
 
-            const headers: HeadersInit = {};
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            const headers: HeadersInit = {
+                'Authorization': `Bearer ${token}` // Token already validated above
+            };
 
             const response = await fetch(API_ENDPOINTS.uploadImage, {
                 method: 'POST',
