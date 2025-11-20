@@ -58,7 +58,7 @@ export default function PhotographerProfilePage() {
   const [viewingOriginal, setViewingOriginal] = useState(false); // 是否查看原图
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -82,6 +82,26 @@ export default function PhotographerProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+
+  // 从 localStorage 加载上次的输入缓存
+  useEffect(() => {
+    const savedFormData = localStorage.getItem('upload_form_cache');
+    if (savedFormData) {
+      try {
+        const cached = JSON.parse(savedFormData);
+        setUploadForm(prev => ({
+          ...prev,
+          // 只恢复非图片字段，图片必须重新选择
+          location: cached.location || '',
+          camera: cached.camera || '',
+          lens: cached.lens || '',
+          settings: cached.settings || '',
+        }));
+      } catch (e) {
+        console.error('Failed to load cached form data:', e);
+      }
+    }
+  }, []);
   const [showAlbumModal, setShowAlbumModal] = useState(false);
   const [albumForm, setAlbumForm] = useState({ name: '', description: '' });
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
@@ -449,7 +469,7 @@ export default function PhotographerProfilePage() {
       console.warn('⚠️ Upload already in progress, ignoring duplicate submission');
       return;
     }
-    
+
     // 🔑 Check authentication before upload
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -485,17 +505,17 @@ export default function PhotographerProfilePage() {
       formData.append('image', uploadForm.image);
 
       const token = localStorage.getItem('auth_token');
-      
+
       // 🔍 DEBUG: Check token availability
       console.log('🔑 [AUTH] Token check:');
       console.log('  - Token exists:', !!token);
       console.log('  - Token length:', token?.length || 0);
       console.log('  - Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
-      
+
       if (!token) {
         throw new Error('登录状态已失效，请重新登录');
       }
-      
+
       const headers: HeadersInit = {
         'Authorization': `Bearer ${token}`
       };
@@ -546,7 +566,7 @@ export default function PhotographerProfilePage() {
 
       // Save photo metadata to backend
       console.log('📤 [SAVE] Saving photo metadata to:', API_ENDPOINTS.uploadPhoto(currentUser.username));
-      
+
       const saveRes = await fetch(API_ENDPOINTS.uploadPhoto(currentUser.username), {
         method: 'POST',
         headers: {
@@ -586,15 +606,25 @@ export default function PhotographerProfilePage() {
 
       setShowUploadModal(false);
 
+      // 💾 保存常用字段到缓存，方便下次上传时快速填充
+      const cacheData = {
+        location: uploadForm.location,
+        camera: uploadForm.camera,
+        lens: uploadForm.lens,
+        settings: uploadForm.settings,
+      };
+      localStorage.setItem('upload_form_cache', JSON.stringify(cacheData));
+      console.log('💾 已缓存表单数据，下次上传时自动填充');
+
       // Reset form
       setUploadForm({
         image: null,
         title: '',
         description: '',
-        location: '',
-        camera: '',
-        lens: '',
-        settings: '',
+        location: uploadForm.location, // 保留缓存的值
+        camera: uploadForm.camera,
+        lens: uploadForm.lens,
+        settings: uploadForm.settings,
         takenAt: '',
         albumId: '',
       });
@@ -701,14 +731,14 @@ export default function PhotographerProfilePage() {
           avatar: profileData.avatarUrl || profileData.avatar, // Normalize avatar field
           photoCount: profileData.photoCount || profileData.designCount,
         });
-        
+
         // 后端已经返回 imageUrlThumb 和 imageUrlMedium，直接使用
         setPhotos(photosData.photos || []);
         setCurrentPage(photosData.currentPage || 1);
         setTotalPages(photosData.totalPages || 0);
         setTotalPhotos(photosData.totalPhotos || 0);
         setHasMore(photosData.hasNext || false);
-        
+
         setAlbums(albumsData.albums || albumsData || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : '加载失败');
@@ -725,24 +755,24 @@ export default function PhotographerProfilePage() {
   // 加载更多照片
   const loadMorePhotos = async () => {
     if (loadingMore || !hasMore) return;
-    
+
     setLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
       const response = await fetch(API_ENDPOINTS.getUserPhotos(username, nextPage, PAGE_SIZE));
-      
+
       if (!response.ok) {
         throw new Error('Failed to load more photos');
       }
-      
+
       const data = await response.json();
-      
+
       // 追加新照片到列表
       setPhotos(prev => [...prev, ...(data.photos || [])]);
       setCurrentPage(data.currentPage || nextPage);
       setTotalPages(data.totalPages || totalPages);
       setHasMore(data.hasNext || false);
-      
+
       console.log(`📸 Loaded page ${nextPage}/${data.totalPages}, total photos: ${photos.length + (data.photos?.length || 0)}`);
     } catch (error) {
       console.error('Load more photos error:', error);
@@ -1095,8 +1125,8 @@ export default function PhotographerProfilePage() {
               <button
                 onClick={() => setSelectedAlbum(null)}
                 className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${selectedAlbum === null
-                    ? 'bg-white text-stone-900'
-                    : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
+                  ? 'bg-white text-stone-900'
+                  : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
                   }`}
               >
                 全部作品 ({photos.length})
@@ -1106,8 +1136,8 @@ export default function PhotographerProfilePage() {
                   <button
                     onClick={() => setSelectedAlbum(album.id)}
                     className={`px-4 py-2 rounded-full text-xs font-light whitespace-nowrap transition-all ${selectedAlbum === album.id
-                        ? 'bg-white text-stone-900'
-                        : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
+                      ? 'bg-white text-stone-900'
+                      : 'bg-stone-900 text-stone-400 hover:text-white border border-stone-800'
                       }`}
                   >
                     {album.name} ({album.photoCount})
@@ -1183,7 +1213,7 @@ export default function PhotographerProfilePage() {
                           onClick={() => setSelectedPhoto(photo)}
                         />
                         {/* Subtle overlay on hover */}
-                        <div 
+                        <div
                           className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out"
                           onClick={() => setSelectedPhoto(photo)}
                         >
@@ -1220,7 +1250,7 @@ export default function PhotographerProfilePage() {
                     </div>
                   ))}
                 </div>
-                
+
                 {/* 加载更多按钮 */}
                 {!selectedAlbum && hasMore && (
                   <div className="max-w-7xl mx-auto mt-12 mb-16 text-center">
@@ -1438,8 +1468,8 @@ export default function PhotographerProfilePage() {
                       <span className="ml-2 sm:ml-3 inline-block">
                         {((currentUser.storageUsed || 0) / (1024 * 1024)).toFixed(1)}MB / {((currentUser.storageLimit) / (1024 * 1024)).toFixed(0)}MB
                         <span className={`ml-1 sm:ml-2 text-xs ${((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.9 ? 'text-red-400' :
-                            ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
-                              'text-green-400'
+                          ((currentUser.storageUsed || 0) / currentUser.storageLimit) >= 0.75 ? 'text-orange-400' :
+                            'text-green-400'
                           }`}>
                           ({Math.round(((currentUser.storageUsed || 0) / currentUser.storageLimit) * 100)}%)
                         </span>
@@ -1461,6 +1491,38 @@ export default function PhotographerProfilePage() {
               </div>
 
               <form onSubmit={handleUploadSubmit} className="space-y-4 sm:space-y-6">
+                {/* 智能缓存提示 */}
+                {(uploadForm.location || uploadForm.camera || uploadForm.lens || uploadForm.settings) && (
+                  <div className="bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2 flex-1">
+                      <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-xs text-blue-300 font-light">
+                          已自动填充上次的设备信息，方便快速上传同类照片
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem('upload_form_cache');
+                        setUploadForm({
+                          ...uploadForm,
+                          location: '',
+                          camera: '',
+                          lens: '',
+                          settings: '',
+                        });
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap"
+                    >
+                      清除缓存
+                    </button>
+                  </div>
+                )}
+
                 {/* Image Upload */}
                 <div>
                   <label className="block text-stone-400 text-xs mb-3 font-light tracking-wide">
@@ -1824,8 +1886,8 @@ export default function PhotographerProfilePage() {
                 <button
                   onClick={() => handleMovePhoto(movingPhoto.id, '')}
                   className={`w-full text-left px-4 py-3 rounded transition-colors ${!movingPhoto.albumId
-                      ? 'bg-stone-700 text-white'
-                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                    ? 'bg-stone-700 text-white'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
                     }`}
                 >
                   <div className="flex items-center gap-3">
@@ -1845,8 +1907,8 @@ export default function PhotographerProfilePage() {
                     onClick={() => handleMovePhoto(movingPhoto.id, album.id)}
                     disabled={movingPhoto.albumId === album.id}
                     className={`w-full text-left px-4 py-3 rounded transition-colors ${movingPhoto.albumId === album.id
-                        ? 'bg-stone-700 text-white cursor-not-allowed'
-                        : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                      ? 'bg-stone-700 text-white cursor-not-allowed'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
                       }`}
                   >
                     <div className="flex items-center gap-3">
