@@ -1,5 +1,13 @@
 export const TEMPLATE_CONFIGS = [
   {
+    id: 'newyear' as const,
+    name: 'New Year Postcard',
+    nameCN: '新年明信片',
+    icon: '🎊',
+    description: 'Vintage New Year postcard with handwritten style',
+    descriptionCN: '复古新年明信片，支持手写体文字',
+  },
+  {
     id: 'postcard' as const,
     name: 'Film Postcard',
     nameCN: '胶片明信片',

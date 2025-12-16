@@ -6,6 +6,7 @@ import TemplateSwitcher from './components/TemplateSwitcher';
 import { useAuth } from './context/AuthContext';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from './config/api';
+import { HANDWRITING_FONTS, FontConfig, DEFAULT_FONT } from './config/fonts';
 
 // New Components
 import ControlPanel from './components/home/ControlPanel';
@@ -23,6 +24,8 @@ export default function Home() {
   const [qrUrl, setQrUrl] = useState('https://example.com');
   const [isPolishing, setIsPolishing] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedFont, setSelectedFont] = useState<FontConfig>(DEFAULT_FONT);
+  const [signature, setSignature] = useState('');
 
   // Refs for capturing content
   const contentRef = useRef<HTMLDivElement>(null);
@@ -160,6 +163,10 @@ export default function Home() {
             onOrderClick={() => setShowOrderModal(true)}
             isPolishing={isPolishing}
             handlePolishText={handlePolishText}
+            selectedFont={selectedFont}
+            setSelectedFont={setSelectedFont}
+            signature={signature}
+            setSignature={setSignature}
           />
 
           {/* Template Preview */}
@@ -169,6 +176,8 @@ export default function Home() {
             text={text}
             qrUrl={qrUrl}
             contentRef={contentRef}
+            fontFamily={selectedFont.family}
+            signature={signature}
           />
         </div>
       </div>

@@ -56,6 +56,7 @@ export function usePostcardGenerator({
                         { id: 'polaroid-preview-content', width: '360px' },
                         { id: 'greeting-preview-content', width: '420px' },
                         { id: 'businesscard-preview-content', width: '400px' },
+                        { id: 'newyear-preview-content', width: '420px' },
                     ];
 
                     templates.forEach(({ id, width }) => {
@@ -78,7 +79,8 @@ export function usePostcardGenerator({
             const templateName = currentTemplate === 'postcard' ? 'postcard' :
                 currentTemplate === 'bookmark' ? 'bookmark' :
                     currentTemplate === 'polaroid' ? 'polaroid' :
-                        currentTemplate === 'businesscard' ? 'businesscard' : 'greeting';
+                        currentTemplate === 'businesscard' ? 'businesscard' :
+                            currentTemplate === 'newyear' ? 'newyear' : 'greeting';
             link.download = `${templateName}-${Date.now()}.jpg`;
             link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.click();

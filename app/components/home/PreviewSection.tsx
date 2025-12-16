@@ -5,6 +5,7 @@ import BookmarkTemplate from '../templates/BookmarkTemplate';
 import PolaroidTemplate from '../templates/PolaroidTemplate';
 import GreetingTemplate from '../templates/GreetingTemplate';
 import BusinessCardTemplate from '../templates/BusinessCardTemplate';
+import NewYearPostcardTemplate from '../templates/NewYearPostcardTemplate';
 
 interface PreviewSectionProps {
     currentTemplate: TemplateType;
@@ -12,6 +13,8 @@ interface PreviewSectionProps {
     text: string;
     qrUrl: string;
     contentRef: React.RefObject<HTMLDivElement | null>;
+    fontFamily?: string; // 用于新年明信片的字体选择
+    signature?: string; // 用于新年明信片的签名
 }
 
 export default function PreviewSection({
@@ -20,6 +23,8 @@ export default function PreviewSection({
     text,
     qrUrl,
     contentRef,
+    fontFamily,
+    signature,
 }: PreviewSectionProps) {
     return (
         <div className="flex justify-center items-center">
@@ -100,6 +105,11 @@ export default function PreviewSection({
                         qrUrl={qrUrl}
                     />
                 </div>
+            ) : currentTemplate === 'newyear' ? (
+                <NewYearPostcardTemplate
+                    ref={contentRef}
+                    data={{ image, text, qrUrl, fontFamily, signature }}
+                />
             ) : (
                 <GreetingTemplate
                     ref={contentRef}

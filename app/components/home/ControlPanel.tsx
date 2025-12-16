@@ -1,6 +1,7 @@
 import React from 'react';
 import { TemplateType } from '../../types/template';
 import { useAuth } from '../../context/AuthContext';
+import { HANDWRITING_FONTS, FontConfig } from '../../config/fonts';
 
 interface ControlPanelProps {
     currentTemplate: TemplateType;
@@ -15,6 +16,12 @@ interface ControlPanelProps {
     onOrderClick: () => void;
     isPolishing: boolean;
     handlePolishText: () => void;
+    // 新年明信片字体选择
+    selectedFont?: FontConfig;
+    setSelectedFont?: (font: FontConfig) => void;
+    // 新年明信片签名
+    signature?: string;
+    setSignature?: (signature: string) => void;
 }
 
 export default function ControlPanel({
@@ -30,6 +37,10 @@ export default function ControlPanel({
     onOrderClick,
     isPolishing,
     handlePolishText,
+    selectedFont,
+    setSelectedFont,
+    signature,
+    setSignature,
 }: ControlPanelProps) {
     const { user, isAuthenticated } = useAuth();
 
@@ -87,8 +98,8 @@ export default function ControlPanel({
                                 <label
                                     htmlFor="image-upload"
                                     className={`flex flex-col items-center justify-center w-full h-32 sm:h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isUploadingImage
-                                            ? 'border-stone-200 bg-stone-50 opacity-50 cursor-not-allowed'
-                                            : 'border-stone-300 bg-white/50 hover:bg-white hover:border-stone-400 hover:shadow-md group-hover:scale-[1.01]'
+                                        ? 'border-stone-200 bg-stone-50 opacity-50 cursor-not-allowed'
+                                        : 'border-stone-300 bg-white/50 hover:bg-white hover:border-stone-400 hover:shadow-md group-hover:scale-[1.01]'
                                         }`}
                                 >
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -170,11 +181,57 @@ export default function ControlPanel({
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
-                            placeholder={currentTemplate === 'businesscard' ? 'PHOTOGRAPHER / 独立摄影师' : '全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融'}
+                            placeholder={currentTemplate === 'businesscard' ? 'PHOTOGRAPHER / 独立摄影师' : currentTemplate === 'newyear' ? '新年快乐\n万事如意，阖家幸福' : '全世界的冰都会重逢\n北冰洋与尼罗河会在混云中交融'}
                             rows={4}
                             className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent resize-none text-stone-700 placeholder:text-stone-300 bg-white/80 transition-all hover:bg-white"
                         />
                     </div>
+
+                    {/* 新年明信片字体选择 */}
+                    {currentTemplate === 'newyear' && setSelectedFont && (
+                        <div>
+                            <label className="block text-sm font-medium text-stone-700 mb-3">
+                                选择手写字体
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {HANDWRITING_FONTS.map((font) => (
+                                    <button
+                                        key={font.id}
+                                        onClick={() => setSelectedFont(font)}
+                                        className={`px-4 py-3 rounded-xl text-sm transition-all ${selectedFont?.id === font.id
+                                            ? 'bg-red-800 text-white shadow-lg'
+                                            : 'bg-white/80 text-stone-700 border border-stone-300 hover:bg-white hover:border-stone-400'
+                                            }`}
+                                        style={{ fontFamily: font.family }}
+                                    >
+                                        {font.name}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-stone-500 mt-2 italic">
+                                选择字体后，预览区文字样式会实时变化
+                            </p>
+                        </div>
+                    )}
+
+                    {/* 新年明信片签名 */}
+                    {currentTemplate === 'newyear' && setSignature && (
+                        <div>
+                            <label className="block text-sm font-medium text-stone-700 mb-3">
+                                署名
+                            </label>
+                            <input
+                                type="text"
+                                value={signature || ''}
+                                onChange={(e) => setSignature(e.target.value)}
+                                placeholder="例如：你的朋友 小明"
+                                className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-stone-400 focus:border-transparent text-stone-700 placeholder:text-stone-400 bg-white/80"
+                            />
+                            <p className="text-xs text-stone-500 mt-2 italic">
+                                添加署名让收到贺卡的人知道是谁送的
+                            </p>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-stone-700 mb-3">
@@ -213,7 +270,8 @@ export default function ControlPanel({
                         {currentTemplate === 'postcard' ? '下载明信片' :
                             currentTemplate === 'bookmark' ? '下载书签' :
                                 currentTemplate === 'polaroid' ? '下载拍立得' :
-                                    currentTemplate === 'businesscard' ? '下载名片' : '下载贺卡'}
+                                    currentTemplate === 'businesscard' ? '下载名片' :
+                                        currentTemplate === 'newyear' ? '下载新年明信片' : '下载贺卡'}
                     </button>
 
                     <button
