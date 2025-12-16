@@ -78,7 +78,7 @@ const BookmarkTemplate = forwardRef<HTMLDivElement, BookmarkTemplateProps>(
                   />
                 </div>
                 <p className="text-[7px] text-stone-400 mt-1">
-                  扫码查看作品集
+                  扫码查看我的作品集
                 </p>
               </div>
             </div>
