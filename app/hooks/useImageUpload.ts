@@ -51,6 +51,14 @@ export function useImageUpload() {
         // Upload to backend
         setIsUploadingImage(true);
         try {
+            // 🔍 Debug: Log upload details
+            console.log('📤 [UPLOAD] Starting image upload');
+            console.log('  - File name:', file.name);
+            console.log('  - File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+            console.log('  - API endpoint:', API_ENDPOINTS.uploadImage);
+            console.log('  - Token exists:', !!token);
+            console.log('  - Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
+
             const formData = new FormData();
             formData.append('image', file);
 
@@ -58,14 +66,33 @@ export function useImageUpload() {
                 'Authorization': `Bearer ${token}` // Token already validated above
             };
 
+            console.log('📤 [UPLOAD] Sending request...');
+
             const response = await fetch(API_ENDPOINTS.uploadImage, {
                 method: 'POST',
                 headers,
                 body: formData,
             });
 
+            console.log('📥 [UPLOAD] Response status:', response.status);
+            console.log('📥 [UPLOAD] Response ok:', response.ok);
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                console.error('❌ [UPLOAD] Error response:', errorData);
+                console.error('❌ [UPLOAD] Status code:', response.status);
+                
+                // 🔒 If token error, suggest re-login
+                if (response.status === 401 || response.status === 403) {
+                    toast.error('登录已过期，请重新登录');
+                    setTimeout(() => {
+                        localStorage.removeItem('auth_token');
+                        localStorage.removeItem('user_data');
+                        window.location.href = '/auth';
+                    }, 1500);
+                    return;
+                }
+                
                 throw new Error(errorData.message || 'Image upload failed');
             }
 

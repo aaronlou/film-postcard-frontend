@@ -63,12 +63,7 @@ const NewYearPostcardTemplate = forwardRef<HTMLDivElement, NewYearPostcardTempla
                                     alt="New Year"
                                     className="w-full h-full object-cover"
                                 />
-                                {/* 胶片穿孔效果 */}
-                                <div className="absolute left-1 top-0 bottom-0 w-1 flex flex-col justify-around py-2 z-20">
-                                    {[...Array(8)].map((_, i) => (
-                                        <div key={`l-${i}`} className="w-1 h-1 bg-stone-900 rounded-full" />
-                                    ))}
-                                </div>
+                       
                                 <div className="absolute right-1 top-0 bottom-0 w-1 flex flex-col justify-around py-2 z-20">
                                     {[...Array(8)].map((_, i) => (
                                         <div key={`r-${i}`} className="w-1 h-1 bg-stone-900 rounded-full" />
