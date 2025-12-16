@@ -117,8 +117,8 @@ const NewYearPostcardTemplate = forwardRef<HTMLDivElement, NewYearPostcardTempla
                                         includeMargin={false}
                                     />
                                 </div>
-                                <p className="text-[8px] text-amber-300/60 mt-1">
-                                    扫码查看我的作品集
+                                <p className="text-[7px] text-amber-300/50 mt-1.5 leading-tight tracking-wide">
+                                    扫码查看<br />作品集
                                 </p>
                             </div>
 
