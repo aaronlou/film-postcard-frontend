@@ -19,7 +19,7 @@ import { usePostcardGenerator } from './hooks/usePostcardGenerator';
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
-  const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('postcard');
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateType>('newyear');
   const [text, setText] = useState('');
   const [qrUrl, setQrUrl] = useState('https://example.com');
   const [isPolishing, setIsPolishing] = useState(false);

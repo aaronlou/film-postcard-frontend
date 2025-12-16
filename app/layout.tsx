@@ -27,11 +27,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        {/* Google Fonts - Chinese Handwriting Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Chinese Handwriting Fonts - 使用国内镜像 */}
+        <link rel="preconnect" href="https://fonts.loli.net" />
+        <link rel="preconnect" href="https://gstatic.loli.net" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&family=Zhi+Mang+Xing&display=swap"
+          href="https://fonts.loli.net/css2?family=Long+Cang&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&family=Zhi+Mang+Xing&display=swap"
           rel="stylesheet"
         />
       </head>
